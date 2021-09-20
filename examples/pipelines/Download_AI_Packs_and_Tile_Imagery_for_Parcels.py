@@ -1,37 +1,12 @@
 from nearmap import NEARMAP
 from nearmap.auth import get_api_key
 from pathlib import Path
-from math import radians, asinh, tan, pi, log, cos
+from math import degrees, radians, atan, sinh, tan, pi, log, cos
 
 try:
     from ujson import dump, dumps, loads
 except ModuleNotFoundError:
     from json import dump, dumps, loads
-
-# Connect to the Nearmap API for Python
-# nearmap = NEARMAP("My_API_Key_Goes_Here")  # Paste or type your API Key here as a string
-nearmap = NEARMAP(get_api_key())
-print(f"My API Key Is: {nearmap.api_key}")
-
-###################
-# User Parameters
-#################
-
-parcel_geojson = r'C:\Users\geoff.taylor\Documents\ArcGIS\Projects\Houston\AOI_Geoms\Parcels_geojson.json'
-out_directory = r'ai_packs_combined'
-
-# AI API Settings
-since = None  # Since Data ex: "2018-08-01"
-until = None  # Until Date ex: "2021-07-09"
-packs = "All_Individual"  # None  # Set to None for all packs otherwise type pack of interest name(s)
-
-# Tile API Settings
-z_level = 19
-image_format = "jpg"
-
-##########
-# Script
-########
 
 
 def latlon_to_xy(lat, lon, z):
@@ -87,45 +62,78 @@ def get_parcel_geoms_and_attributes(parcel_geojson):
     return parcel_data
 
 
-parcel_data = get_parcel_geoms_and_attributes(parcel_geojson)
+def download_ai_packs_and_imagery():
+    parcel_data = get_parcel_geoms_and_attributes(parcel_geojson)
 
+    # query available ai packs
+    my_packs = nearmap.aiPacksV4()
+    available_packs = [i['code'] for i in my_packs["packs"]]
+    print(f"AI Packs I have access: {available_packs}")
 
-# query available ai packs
-my_packs = nearmap.aiPacksV4()
-available_packs = [i['code'] for i in my_packs["packs"]]
-print(f"AI Packs I have access: {available_packs}")
-
-tile_directions = ["Vert", "North", "South", "East", "West"]
-
-count = 0
-for p in parcel_data:
-    loc_addr = p[0]
-    city = p[1]
-    zip = p[2]
-    geom = p[3]
-    folder = f"{out_directory}\\{loc_addr.replace(' ', '_')}__{city}__{zip}"
-    Path(folder).mkdir(parents=True, exist_ok=True)
-    if packs:
-        if packs == "All_Individual":
-            for pack in available_packs:
-                my_ai_features = nearmap.aiFeaturesV4(geom, since, until, pack, out_format="json",
+    print(f"Downloading data for {len(parcel_data)} parcels")
+    tile_directions = ["Vert", "North", "South", "East", "West"]
+    count = 0
+    for p in parcel_data:
+        loc_addr = p[0]
+        city = p[1]
+        zip = p[2]
+        geom = p[3]
+        folder = f"{out_directory}\\{loc_addr.replace(' ', '_')}__{city}__{zip}"
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        # Download AI Packs
+        if packs:
+            if packs == "All_Individual":
+                for pack in available_packs:
+                    my_ai_features = nearmap.aiFeaturesV4(geom, since, until, pack, out_format="json",
+                                                          lat_lon_direction="yx")
+                    with open(f'{folder}\\{pack}.json', 'w', encoding='utf-8') as f:
+                        dump(my_ai_features, f, ensure_ascii=False, indent=4)
+            else:
+                my_ai_features = nearmap.aiFeaturesV4(geom, since, until, packs, out_format="json",
                                                       lat_lon_direction="yx")
-                with open(f'{folder}\\{pack}.json', 'w', encoding='utf-8') as f:
+                with open(f'{folder}\\{packs}.json', 'w', encoding='utf-8') as f:
                     dump(my_ai_features, f, ensure_ascii=False, indent=4)
-        else:
-            my_ai_features = nearmap.aiFeaturesV4(geom, since, until, packs, out_format="json",
-                                                  lat_lon_direction="yx")
-            with open(f'{folder}\\{packs}.json', 'w', encoding='utf-8') as f:
+        if not packs:
+            my_ai_features = nearmap.aiFeaturesV4(geom, since, until, packs, out_format="json", lat_lon_direction="yx")
+            with open(f'{folder}\\all_packs.json', 'w', encoding='utf-8') as f:
                 dump(my_ai_features, f, ensure_ascii=False, indent=4)
-    if not packs:
-        my_ai_features = nearmap.aiFeaturesV4(geom, since, until, packs, out_format="json", lat_lon_direction="yx")
-        with open(f'{folder}\\all_packs.json', 'w', encoding='utf-8') as f:
-            dump(my_ai_features, f, ensure_ascii=False, indent=4)
-    image_folder = f"{folder}\\Images"
-    Path(image_folder).mkdir(parents=True, exist_ok=True)
-    for tile_direction in tile_directions:
-        wgs84_x, wgs84_y = get_extent_centroid(get_geometry_extent(geom))
-        slippy_y, slippy_x = latlon_to_xy(lat=wgs84_y, lon=wgs84_x, z=z_level)
-        out_image = f"{image_folder}\\{tile_direction}.{image_format}"
-        image_tile_file = nearmap.tileV3(tile_direction, z_level, slippy_y, slippy_x, image_format, out_image)
-count += 1
+        # Download Imagery
+        image_folder = f"{folder}\\Images"
+        Path(image_folder).mkdir(parents=True, exist_ok=True)
+        for tile_direction in tile_directions:
+            wgs84_x, wgs84_y = get_extent_centroid(get_geometry_extent(geom))
+            slippy_y, slippy_x = latlon_to_xy(lat=wgs84_y, lon=wgs84_x, z=z_level)
+            out_image = f"{image_folder}\\{tile_direction}.{image_format}"
+            image_tile_file = nearmap.tileV3(tile_direction, z_level, slippy_y, slippy_x, image_format, out_image)
+    count += 1
+
+
+if __name__ == "__main__":
+    # Connect to the Nearmap API for Python
+    # nearmap = NEARMAP("My_API_Key_Goes_Here")  # Paste or type your API Key here as a string
+    nearmap = NEARMAP(get_api_key())
+    print(f"My API Key Is: {nearmap.api_key}")
+
+    ###################
+    # User Parameters
+    #################
+
+    # parcel_geojson = r'C:\Parcels_geojson.json'
+    root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
+    parcel_geojson = f"{root}/nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcels_geojson.json"
+    out_directory = r'ai_packs_sample'
+
+    # AI API Settings
+    since = None  # Since Data ex: "2018-08-01"
+    until = None  # Until Date ex: "2021-07-09"
+    packs = "All_Individual"  # None  # Set to None for all packs otherwise type pack of interest name(s)
+
+    # Tile API Settings
+    z_level = 19
+    image_format = "jpg"
+
+    ##########
+    # Script
+    ########
+
+    download_ai_packs_and_imagery()
