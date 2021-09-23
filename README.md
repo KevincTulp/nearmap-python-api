@@ -12,6 +12,8 @@ Initial Instructions:
 3.) Access example implementation scripts for all API operations in the "examples folder": https://github.com/geoffhtaylor3d/nearmap-python-api/tree/master/examples
 
 
+_** The current release of the Nearmap API for Python only supports synchronous API calls. Asynchronous API calls and more advanced data download operations are slated for later release**_
+
 Example Usage:
 
 Connect to the Nearmap API for Python
@@ -82,3 +84,5 @@ get_tile = nearmap.tileSurvey(surveyid, contentType, z, x, y, format, out_image)
 img = Image.open(get_tile)
 img.show()
 ```
+
+Contact: geoff.taylor@nearmap.com with any questions/bugs/issues.
