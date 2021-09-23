@@ -13,7 +13,7 @@ print(f"My API Key Is: {nearmap.api_key}")
 #################
 
 tileResourceType = "Vert"
-z = 20
+z = 19
 x = 119799
 y = 215845
 format = "jpg"
