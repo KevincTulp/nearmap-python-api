@@ -9,7 +9,7 @@ Initial Instructions:
 
 2.) Implement code in your script or jupyter notebook
 
-3.) Access example implementation scripts for all API operations in the "examples folder": https://github.com/geoffhtaylor3d/nearmap-python-api/tree/master/examples
+3.) Access example implementation scripts for all API operations in the ["examples folder"](https://github.com/nearmap/nearmap-python-api/tree/master/examples)
 
 
 _** The current release of the Nearmap API for Python only supports synchronous API calls. Asynchronous API calls and more advanced data download operations are slated for later release**_
