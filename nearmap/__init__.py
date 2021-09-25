@@ -753,7 +753,7 @@ class NEARMAP(object):
     ################
 
     def tileV3(self, tileResourceType, z, x, y, out_format, out_image, tertiary=None, since=None, until=None,
-               mosaic=None, include=None, exclude=None):
+               mosaic=None, include=None, exclude=None, rate_limit_mode="slow"):
         """
         Function retrieves vertical or panorama tiles for a specified location. Use this API to add a Nearmap basemap
         to your application, with optional date control.
@@ -858,9 +858,9 @@ class NEARMAP(object):
 
         """
         return _api.tileV3(self.base_url, self.api_key, tileResourceType, z, x, y, out_format, out_image, tertiary,
-                           since, until, mosaic, include, exclude)
+                           since, until, mosaic, include, exclude, rate_limit_mode)
 
-    def tileSurveyV3(self, surveyid, contentType, z, x, y, out_format, out_image):
+    def tileSurveyV3(self, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow"):
         """
         Function retrieves vertical or panorama tiles of a specified survey for a specified location.
         Use this method to retrieve imagery for a single survey
@@ -909,4 +909,5 @@ class NEARMAP(object):
         :return: out_image or bytes
 
         """
-        return _api.tileSurveyV3(self.base_url, self.api_key, surveyid, contentType, z, x, y, out_format, out_image)
+        return _api.tileSurveyV3(self.base_url, self.api_key, surveyid, contentType, z, x, y, out_format, out_image,
+                                 rate_limit_mode)

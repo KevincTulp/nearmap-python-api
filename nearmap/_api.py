@@ -8,9 +8,10 @@
 #   Python Version: 3.6+
 ####################################
 
+from datetime import datetime, timezone, timedelta
 from requests import get
 from io import BytesIO
-
+from time import sleep
 
 try:
     from ujson import loads
@@ -18,7 +19,7 @@ except ModuleNotFoundError:
     from json import loads
 
 
-def format_polygon(polygon, lat_lon_direction):
+def _format_polygon(polygon, lat_lon_direction):
     if type(polygon) is str:
         polygon = [float(i) for i in polygon.split(",")]
     assert (len(polygon) % 2) == 0, "Error: input geometry does not contain an even number of lat/lon coords"
@@ -27,11 +28,9 @@ def format_polygon(polygon, lat_lon_direction):
     return str(polygon)[1:-1].replace(" ", "")
 
 
-def download_file(url, out_file):
-    # out_file = url.split('/')[-1]
-    #out_file is the file path to save to
-    #url is the requested data
-    r = get(url, stream="true")
+def _download_file(url, out_file):
+    r = get(url, stream=True)
+    print(r.headers)
     if r.status_code == 200:
         with open(out_file, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024):
@@ -40,6 +39,68 @@ def download_file(url, out_file):
         return out_file
     else:
         print(http_response_error_reporting(r.status_code))
+
+
+def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
+
+    def _image_get_op(url, out_format, out_image):
+        if out_image.lower() == "bytes":
+            return get(url, stream=True)
+        else:
+            assert out_image.endswith(
+                out_format), f"Error, output image {out_image} does not end with format {out_format}"
+            return get(url, allow_redirects=True)
+
+    img_formats = ["jpg", "png", "img"]
+    assert out_format in img_formats, f"Error, output image format must be a member of {','.join(img_formats)}"
+    assert out_image, "error: Output Image File Path or Bytes flag undefined."
+
+    image = _image_get_op(url, out_format, out_image)
+    response_code = image.status_code
+    if response_code != 200:
+        print(http_response_error_reporting(response_code))
+
+    # Begin Rate Limiting if response = 429
+    if response_code == 429:  # If user hits default rate limit pause for milliseconds.
+        sleep(0.1)
+        image = get(url, stream=True)
+        response_code = image.status_code
+    if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
+        rate_limit_modes = ["slow", "fast"]
+        assert rate_limit_mode.lower() in rate_limit_modes, f"Error: Rate_limit_mode not a member of " \
+                                                            f"{','.join(rate_limit_modes)}"
+        if rate_limit_mode.lower() == "slow":
+            while response_code == 429:
+                rate_limit = image.headers["x-ratelimit-limit"]
+                rate_limit_reset = image.headers["x-ratelimit-reset"]
+                then_utc = datetime.fromtimestamp(float(rate_limit_reset), timezone.utc)
+                now_utc = datetime.now(timezone.utc)
+                delay_time = abs((now_utc - then_utc) / timedelta(seconds=1))+1
+                print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for {delay_time} "
+                      f"seconds")
+                sleep(delay_time)
+                image = _image_get_op(url, out_format, out_image)
+                response_code = image.status_code
+
+        elif rate_limit_mode.lower() == "fast":
+            delay_time = 0.3    # 0.3 seconds
+            max_delay_time = 1800   # 30 minutes
+            while response_code == 429:
+                rate_limit = image.headers["x-ratelimit-limit"]
+                print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for "
+                      f"{delay_time} seconds")
+                sleep(delay_time)
+                image = _image_get_op(url, out_format, out_image)
+                response_code = image.status_code
+                if delay_time != max_delay_time:  # Incremental Delay increase
+                    delay_time *= 2
+                elif delay_time >= max_delay_time:  # Reset Delay Time if delaying for >= 30 minutes
+                    delay_time = 0.3
+    if out_image.lower() == "bytes":
+        return BytesIO(image.content)
+    else:
+        open(out_image, 'wb').write(image.content)
+        return out_image
 
 
 def http_response_error_reporting(status):
@@ -57,8 +118,7 @@ def http_response_error_reporting(status):
     elif status == 404:
         return '404 Not Found: Returned when cannot find any surveys for the requested condition.'
     elif status == 429:
-        return '429 Too Many Requests: The rate limit has been reached... more info ' + \
-               'https://docs.nearmap.com/display/ND/New+Standard+for+Nearmap+APIs#NewStandardforNearmapAPIs-RateLimiting'
+        return '429 Too Many Requests: The rate limit has been reached...'
     elif str(status)[:1] == "5":
         return f"{status} Server Error. Returned when something is wrong in the server side."
     else:
@@ -78,7 +138,7 @@ def http_response_error_reporting(status):
 
 def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None, out_format="json",
                  lat_lon_direction="yx", surveyResourceID=None):
-    polygon = format_polygon(polygon, lat_lon_direction)
+    polygon = _format_polygon(polygon, lat_lon_direction)
     # TODO: determine how to implement surveyResourceID parameter
     url = f"{base_url}ai/features/v4/features.json?polygon={polygon.replace(' ','')}"
     if since:
@@ -134,7 +194,7 @@ def aiPacksV4(base_url, api_key, out_format="json"):
 
 def polyV2(base_url, api_key, polygon, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
            overlap=None, include=None, exclude=None, lat_lon_direction="yx"):
-    polygon = format_polygon(polygon, lat_lon_direction)
+    polygon = _format_polygon(polygon, lat_lon_direction)
     url = f"{base_url}coverage/v2/poly/{polygon}"
     url += f"?apikey={api_key}"
     if since:
@@ -162,7 +222,7 @@ def polyV2(base_url, api_key, polygon, since=None, until=None, limit=20, offset=
 
 def pointV2(base_url, api_key, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
             include=None, exclude=None, lat_lon_direction="yx"):
-    point = format_polygon(point, lat_lon_direction)
+    point = _format_polygon(point, lat_lon_direction)
     url = f"{base_url}coverage/v2/point/{point}"
     url += f"?apikey={api_key}"
     if since:
@@ -213,7 +273,7 @@ def coordV2(base_url, api_key, z, x, y, since=None, until=None, limit=20, offset
 
 def surveyV2(base_url, api_key, polygon, fileFormat="geojson", since=None, until=None, limit=20, offset=None,
              resources=None, overlap=None, include=None, exclude=None, lat_lon_direction="yx"):
-    polygon = format_polygon(polygon, lat_lon_direction)
+    polygon = _format_polygon(polygon, lat_lon_direction)
     url = f"{base_url}coverage/v2/surveyresources/boundaries.{fileFormat}"
     url += f"?polygon={polygon}&apikey={api_key}"
     if since:
@@ -251,7 +311,7 @@ def coverageV2(base_url, api_key, fileFormat="geojson", types=None):
 
 def coverageStaticMapV2(base_url, api_key, point, radius, resources=None, overlap=None, since=None, until=None, fields=None,
                         limit=100, offset=None, lat_lon_direction="yx"):
-    point = format_polygon(point, lat_lon_direction)
+    point = _format_polygon(point, lat_lon_direction)
     url = f"{base_url}staticmap/v2/coverage.json?point={point}&radius={radius}"
     if overlap:
         url += f"&overlap={overlap}"
@@ -275,7 +335,7 @@ def coverageStaticMapV2(base_url, api_key, point, radius, resources=None, overla
 
 def imageStaticMapV2(base_url, api_key, surveyID, image_type, file_format, point, radius, size, transactionToken, out_image,
                      lat_lon_direction="yx"):
-    point = format_polygon(point, lat_lon_direction)
+    point = _format_polygon(point, lat_lon_direction)
     url = f"{base_url}staticmap/v2/surveys/{surveyID}/{image_type}.{file_format}"
     url += f"?point={point}&radius={radius}&size={size}&transactionToken={transactionToken}"
     if not out_image:
@@ -284,7 +344,7 @@ def imageStaticMapV2(base_url, api_key, surveyID, image_type, file_format, point
         return BytesIO(get(url, stream=True).content)
     else:
         if out_image.endswith(file_format):
-            return download_file(url, out_image)
+            return _download_file(url, out_image)
         else:
             raise Exception(f"error: Output image format and selected image format are not consistent {out_image}"
                             f" | {file_format}")
@@ -296,7 +356,7 @@ def imageStaticMapV2(base_url, api_key, surveyID, image_type, file_format, point
 
 
 def tileV3(base_url, api_key, tileResourceType, z, x, y, out_format, out_image, tertiary=None, since=None, until=None,
-           mosaic=None, include=None, exclude=None):
+           mosaic=None, include=None, exclude=None, rate_limit_mode="slow"):
     if "." in out_format:
         out_format.replace(".", "")
     out_format = out_format.lower().strip()
@@ -322,34 +382,13 @@ def tileV3(base_url, api_key, tileResourceType, z, x, y, out_format, out_image, 
     if exclude:
         # TODO: Assess tag exclusion and auto-formatting json, list, etc into the schema. fun....
         url += f"&exclude={exclude}"
-    if not out_image:
-        raise Exception("error: Output Image File Path or Bytes flag undefined.")
-    if out_image.lower() == "bytes":
-        return BytesIO(get(url, stream=True).content)
-    else:
-        if out_image.endswith(out_format):
-            open(out_image, 'wb').write(get(url, allow_redirects=True).content)
-        else:
-            raise Exception(f"error: Output image format and selected image format are not consistent {out_image}"
-                            f" | {out_format}")
-        return out_image
+    return _get_image(url, out_format, out_image, rate_limit_mode)
 
 
-def tileSurveyV3(base_url, api_key, surveyid, contentType, z, x, y, out_format, out_image):
+def tileSurveyV3(base_url, api_key, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow"):
     if "." in out_format:
         out_format.replace(".", "")
     out_format = out_format.lower().strip()
     contentType = contentType.lower().capitalize().strip()
     url = f"{base_url}tiles/v3/surveys/{surveyid}/{contentType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
-
-    if not out_image:
-        raise Exception("error: Output Image File Path or Bytes flag undefined.")
-    if out_image.lower() == "bytes":
-        return BytesIO(get(url, stream=True).content)
-    else:
-        if out_image.endswith(out_format):
-            open(out_image, 'wb').write(get(url, allow_redirects=True).content)
-        else:
-            raise Exception(f"error: Output image format and selected image format are not consistent {out_image}"
-                            f" | {out_format}")
-        return out_image
+    return _get_image(url, out_format, out_image, rate_limit_mode)
