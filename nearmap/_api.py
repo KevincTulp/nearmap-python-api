@@ -38,7 +38,7 @@ def _download_file(url, out_file):
                     f.write(chunk)
         return out_file
     else:
-        print(http_response_error_reporting(r.status_code))
+        print(_http_response_error_reporting(r.status_code))
 
 
 def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
@@ -58,12 +58,12 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
     image = _image_get_op(url, out_format, out_image)
     response_code = image.status_code
     if response_code != 200:
-        print(http_response_error_reporting(response_code))
+        print(_http_response_error_reporting(response_code))
 
     # Begin Rate Limiting if response = 429
     if response_code == 429:  # If user hits default rate limit pause for milliseconds.
         sleep(0.1)
-        image = get(url, stream=True)
+        image = _image_get_op(url, out_format, out_image)
         response_code = image.status_code
     if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
         rate_limit_modes = ["slow", "fast"]
@@ -103,7 +103,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
         return out_image
 
 
-def http_response_error_reporting(status):
+def _http_response_error_reporting(status):
     if status == 200:
         return '200 OK: Success'
     elif status == 400:
