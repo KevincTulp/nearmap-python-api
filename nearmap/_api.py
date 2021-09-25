@@ -94,8 +94,8 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 response_code = image.status_code
                 if delay_time != max_delay_time:  # Incremental Delay increase
                     delay_time *= 2
-                elif delay_time >= max_delay_time:  # Reset Delay Time if delaying for >= 30 minutes
-                    delay_time = 0.3
+                elif delay_time >= max_delay_time:  # Cap delay time at 60 seconds
+                    delay_time = max_delay_time
     if out_image.lower() == "bytes":
         return BytesIO(image.content)
     else:
