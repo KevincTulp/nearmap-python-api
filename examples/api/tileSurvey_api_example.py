@@ -1,5 +1,7 @@
 from nearmap import NEARMAP
+from nearmap.auth import get_api_key
 from PIL import Image
+
 
 # Connect to the Nearmap API for Python
 # nearmap = NEARMAP("My_API_Key_Goes_Here")  # Paste or type your API Key here as a string

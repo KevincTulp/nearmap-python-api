@@ -34,11 +34,11 @@ lat_lon_direction = "yx"
 ##########
 # Script
 ########
-'''
+
 polygon_coverage = nearmap.polyV2(polygon, since, until, limit, offset, fields, sort, overlap, include, exclude,
                                   lat_lon_direction)
-'''
-polygon_coverage = nearmap.polyV2(polygon)
+#polygon_coverage = nearmap.polyV2(polygon)
+
 print(dumps(polygon_coverage, indent=4, sort_keys=True))
 print(len(polygon_coverage['surveys']))
 assert len(polygon_coverage["surveys"]) > 0, "Error: empty json object returned.. No Features Detected"
