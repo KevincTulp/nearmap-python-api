@@ -353,12 +353,12 @@ def dsm_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None
     for row, column in df_parcels.iterrows():
 
         if column.geometry.is_empty:
-            print('this was empty')
+            # print('this was empty')
             pass
 
         else:
             x = df_parcels.iloc[row].tile.centroid.coords[:]  # raw centroid point in a list of tuples
-            print("DSM data is being Returned....")
+            # print("DSM data is being Returned....")
             # center_point_of_grid = str(x[0][0]) + ',' + str(x[0][1]) #unpack raw centroid coords into a string for the API call.
 
             point = [x[0][0], x[0][1]]
