@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from requests import get
 from io import BytesIO
 from time import sleep
+from pathlib import Path
 
 try:
     from ujson import loads
@@ -129,7 +130,63 @@ def _http_response_error_reporting(status):
 # Download Features
 ###################
 
-    # Coming Soon! In Development
+
+def download_ortho(base_url, api_key, polygon, out_folder, since=None, until=None):
+    from nearmap._download import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
+    from nearmap._ai_download import ortho_imagery_downloader
+
+    coords = get_coords(in_file=polygon)
+    grid = create_grid(coords)
+    slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
+    Path(out_folder).mkdir(parents=True, exist_ok=True)
+    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
+
+    return slippy_grid, ortho_out
+
+
+def download_dsm(base_url, api_key, polygon, out_folder, since=None, until=None):
+    from nearmap._download import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
+    from nearmap._ai_download import dsm_imagery_downloader
+
+    coords = get_coords(in_file=polygon)
+    grid = create_grid(coords)
+    slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
+    Path(out_folder).mkdir(parents=True, exist_ok=True)
+    dsm_out = dsm_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
+
+    return slippy_grid, dsm_out
+
+
+def download_ai(base_url, api_key, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
+                lat_lon_direction="yx", surveyResourceID=None):
+    from nearmap._download import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
+    from nearmap._ai_download import generate_ai_pack, process_payload, process_payload_parse
+
+    coords = get_coords(in_file=polygon)
+    grid = create_grid(coords)
+    slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
+    Path(out_folder).mkdir(parents=True, exist_ok=True)
+    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, out_folder, since, until, packs, out_format,
+                              lat_lon_direction, surveyResourceID)
+    return slippy_grid, ai_out
+
+
+def download_multi(base_url, api_key, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
+                lat_lon_direction="yx", surveyResourceID=None):
+    from nearmap._ai_download import ortho_imagery_downloader, dsm_imagery_downloader, generate_ai_pack
+    from nearmap._download import get_coords, create_grid, grid_to_slippy_grid
+
+    coords = get_coords(in_file=polygon)
+    grid = create_grid(coords)
+    slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
+    Path(out_folder).mkdir(parents=True, exist_ok=True)
+    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
+    dsm_out = dsm_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
+    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, out_folder, since, until, packs, out_format,
+                              lat_lon_direction,
+                              surveyResourceID)
+
+    return slippy_grid, ortho_out, dsm_out, ai_out
 
 ###############
 #  NEARMAP AI

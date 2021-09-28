@@ -42,11 +42,226 @@ class NEARMAP(object):
     # Download Features
     ###################
 
-    # Coming Soon! In Development
+    def download_ortho(self, polygon, out_folder, since=None, until=None):
+        """
+               Functions handles the ortho download process using python api wrappers and a grid system which
+               will cover the user defined area. Results will be fed back via this grid of roughly 100m x 100m mosiac.
+               Ortho is created using the tile api and the user is able to specify things like resolution to help
+               with load times.
+               More Info: https://docs.nearmap.com/display/ND/Tile+API
+               ===============     ====================================================================
+               **Argument**        **Description**
+               ---------------     --------------------------------------------------------------------
+               polygon             Required string or list of lon/lat coords in WGS84 (EPSG : 4326)
+                                   Example: "lon1,lat1,lon2,lat2,..." -or [lon1,lat1,lon2,lat2,...]
+               ---------------     --------------------------------------------------------------------
+               out_folder   Required file location where the output tif responses will be saved.
+                                   Example: file path
+               ---------------     --------------------------------------------------------------------
+               since               Optional string.    The first day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. 2015-10-31 to retrieve ai data since this
+                                       date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data since 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, the since parameter controls the earliest ai data that is
+                                       returned & ikf there are multiple captures after the date specified by the since
+                                       parameter, the latest ai data is returned.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ---------------     --------------------------------------------------------------------
+               until               Optional string.    The last day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. dis to retrieve ai data until this date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data until 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, and ai data at that location at that date exists, the request
+                                       returns the data.
+                                       -If specified, and ai data at that location at that date does not exist, the
+                                       request returns asi data of the next available date before the specified date.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ===============     ====================================================================
+               :return: tif file responses in a mosiac of the area of interest.
+               """
+        return _api.download_ortho(self.base_url, self.api_key, polygon, out_folder, since, until)
+
+    def download_dsm(self, polygon, out_folder, since=None, until=None):
+        """
+                Functions handles the DSM download process using python api wrappers and a grid system which
+                will cover the user defined area. Results will be fed back via this grid of roughly 100m x 100m mosiac.
+                Ortho is created using the tile api and the user is able to specify things like resolution to help
+                with load times.
+                More Info: https://docs.nearmap.com/display/ND/DSM+and+TrueOrtho+API
+                ===============     ====================================================================
+                **Argument**        **Description**
+                ---------------     --------------------------------------------------------------------
+                polygon             Required string or list of lon/lat coords in WGS84 (EPSG : 4326)
+                                    Example: "lon1,lat1,lon2,lat2,..." -or [lon1,lat1,lon2,lat2,...]
+                ---------------     --------------------------------------------------------------------
+                out_folder   Required file location where the output tif responses will be saved.
+                                    Example: file path
+                ---------------     --------------------------------------------------------------------
+                since               Optional string.    The first day from which to retrieve the ai data (inclusive).
+                                    The two possible formats are:
+                                        -For a specific date: YYYY-MM-DD, e.g. 2015-10-31 to retrieve ai data since this
+                                        date.
+                                        -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data since 5
+                                        months ago.
+                                    Notes:
+                                        -If specified, the since parameter controls the earliest ai data that is
+                                        returned & ikf there are multiple captures after the date specified by the since
+                                        parameter, the latest ai data is returned.
+                                        -If neither since nor until are specified, the request returns the latest ai
+                                        data.
+                ---------------     --------------------------------------------------------------------
+                until               Optional string.    The last day from which to retrieve the ai data (inclusive).
+                                    The two possible formats are:
+                                        -For a specific date: YYYY-MM-DD, e.g. dis to retrieve ai data until this date.
+                                        -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data until 5
+                                        months ago.
+                                    Notes:
+                                        -If specified, and ai data at that location at that date exists, the request
+                                        returns the data.
+                                        -If specified, and ai data at that location at that date does not exist, the
+                                        request returns asi data of the next available date before the specified date.
+                                        -If neither since nor until are specified, the request returns the latest ai
+                                        data.
+                ===============     ====================================================================
+                :return: tif file responses in a mosiac of the area of interest.
+                """
+        return _api.download_dsm(self.base_url, self.api_key, polygon, out_folder, since, until)
+
+    def download_ai(self, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
+                    lat_lon_direction="yx", surveyResourceID=None):
+        """
+               Function retrieves AI Feature tiles for a specified location. Use this API to access vectorized
+               features detected using AI with optional date control.
+               More Info: https://docs.nearmap.com/display/ND/AI+Feature+API
+               ===============     ====================================================================
+               **Argument**        **Description**
+               ---------------     --------------------------------------------------------------------
+               polygon             Required string or list of lon/lat coords in WGS84 (EPSG : 4326)
+                                   Example: "lon1,lat1,lon2,lat2,..." -or [lon1,lat1,lon2,lat2,...]
+               ---------------     --------------------------------------------------------------------
+               since               Optional string.    The first day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. 2015-10-31 to retrieve ai data since this
+                                       date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data since 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, the since parameter controls the earliest ai data that is
+                                       returned & ikf there are multiple captures after the date specified by the since
+                                       parameter, the latest ai data is returned.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ---------------     --------------------------------------------------------------------
+               until               Optional string.    The last day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. dis to retrieve ai data until this date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data until 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, and ai data at that location at that date exists, the request
+                                       returns the data.
+                                       -If specified, and ai data at that location at that date does not exist, the
+                                       request returns asi data of the next available date before the specified date.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ---------------     --------------------------------------------------------------------
+               packs               Optional string.    Input the name or list of names for the AI packs you want to download.
+                                   Example: "Building Footprints"
+                                   If you are unsure what AI Packs you have access to with your nearmap subscription
+                                   use the nearmap.aiPacks() function to list them.
+                                   More Information on AI Packs: https://docs.nearmap.com/display/ND/AI+Packs
+               ---------------     --------------------------------------------------------------------
+               out_format          Optional string.    Output format for returning AI Features. If not specified JSON will be
+                                   returned by default.
+                                   The available values are:
+                                       "json" - returns a json object (This is the default)
+                                       "text" - returns a text object
+                                       "pandas" - returns a pandas dataframe object
+               ---------------     --------------------------------------------------------------------
+               lat_lon_direction   Optional string.  Reverses the ordering of the default point input parameter from lon/lat
+                                   to lat/lon coords to support US and other nations using this ordering.
+                                   Usage: "xy" for US, "yx" for other
+               ---------------     --------------------------------------------------------------------
+               surveyResourceID    placeholder for later use.... of no current usage value
+               ===============     ====================================================================
+               :return: json, text, or pandas dataframe object
+               """
+        return _api.download_ai(self.base_url, self.api_key, polygon, out_folder, since, until, packs,
+                                out_format, lat_lon_direction, surveyResourceID)
+
+    def download_multi(self, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
+                       lat_lon_direction="yx", surveyResourceID=None):
+        """
+               Full AEC content stack downloading function. This function will allow a user to input an area of interest
+               then will be returned high res ortho imagery, DSM and AI data, saved locally.
+               More Info: https://docs.nearmap.com/display/ND/AI+Feature+API
+               ===============     ====================================================================
+               **Argument**        **Description**
+               ---------------     --------------------------------------------------------------------
+               polygon             Required string or list of lon/lat coords in WGS84 (EPSG : 4326)
+                                   Example: "lon1,lat1,lon2,lat2,..." -or [lon1,lat1,lon2,lat2,...]
+               ---------------     --------------------------------------------------------------------
+               since               Optional string.    The first day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. 2015-10-31 to retrieve ai data since this
+                                       date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data since 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, the since parameter controls the earliest ai data that is
+                                       returned & ikf there are multiple captures after the date specified by the since
+                                       parameter, the latest ai data is returned.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ---------------     --------------------------------------------------------------------
+               until               Optional string.    The last day from which to retrieve the ai data (inclusive).
+                                   The two possible formats are:
+                                       -For a specific date: YYYY-MM-DD, e.g. dis to retrieve ai data until this date.
+                                       -For a relative date: xxY, xxM, or xxD, e.g. 5M to retrieve ai data until 5
+                                       months ago.
+                                   Notes:
+                                       -If specified, and ai data at that location at that date exists, the request
+                                       returns the data.
+                                       -If specified, and ai data at that location at that date does not exist, the
+                                       request returns asi data of the next available date before the specified date.
+                                       -If neither since nor until are specified, the request returns the latest ai
+                                       data.
+               ---------------     --------------------------------------------------------------------
+               packs               Optional string.    Input the name or list of names for the AI packs you want to download.
+                                   Example: "Building Footprints"
+                                   If you are unsure what AI Packs you have access to with your nearmap subscription
+                                   use the nearmap.aiPacks() function to list them.
+                                   More Information on AI Packs: https://docs.nearmap.com/display/ND/AI+Packs
+               ---------------     --------------------------------------------------------------------
+               out_format          Optional string.    Output format for returning AI Features. If not specified JSON will be
+                                   returned by default.
+                                   The available values are:
+                                       "json" - returns a json object (This is the default)
+                                       "text" - returns a text object
+                                       "pandas" - returns a pandas dataframe object
+               ---------------     --------------------------------------------------------------------
+               lat_lon_direction   Optional string.  Reverses the ordering of the default point input parameter from lon/lat
+                                   to lat/lon coords to support US and other nations using this ordering.
+                                   Usage: "xy" for US, "yx" for other
+               ---------------     --------------------------------------------------------------------
+               surveyResourceID    placeholder for later use.... of no current usage value
+               ===============     ====================================================================
+               :return: json, text, or pandas dataframe object
+               """
+        return _api.download_multi(self.base_url, self.api_key, polygon, out_folder, since, until, packs,
+                                   out_format, lat_lon_direction, surveyResourceID)
 
     ###############
     #  NEARMAP AI
     #############
+
     def aiFeaturesV4(self, polygon, since=None, until=None, packs=None, out_format="json", lat_lon_direction="yx",
                      surveyResourceID=None):
         """
