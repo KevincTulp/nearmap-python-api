@@ -19,12 +19,10 @@ y = 215845
 format = "jpg"
 out_image = f"test_image.{format}"
 
-
 # Get Image Tile as Bytes
 image_tile_bytes = nearmap.tileV3(tileResourceType, z, x, y, format, "bytes", rate_limit_mode="slow")
 imBytes = Image.open(image_tile_bytes)
 imBytes.show()
-
 
 tileResourceType = "South"
 # Get Image Tile as File
