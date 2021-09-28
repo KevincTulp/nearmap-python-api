@@ -1,3 +1,13 @@
+####################################
+#   File name: _download.py
+#   About: The Nearmap API for Python
+#   Author: Connor Tluck | Solutions Engineer | Nearmap
+#           Geoff Taylor | Sr Solutions Architect | Nearmap
+#   Date created: 7/10/2021
+#   Last update: 9/28/2021
+#   Python Version: 3.6+
+####################################
+
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 import math

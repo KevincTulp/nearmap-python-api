@@ -4,7 +4,7 @@
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #            Connor Tluck | Solutions Engineer | Nearmap
 #   Date created: 7/7/2021
-#   Last update: 9/17/2021
+#   Last update: 9/28/2021
 #   Python Version: 3.6+
 ####################################
 
@@ -31,7 +31,7 @@ def _format_polygon(polygon, lat_lon_direction):
 
 def _download_file(url, out_file):
     r = get(url, stream=True)
-    print(r.headers)
+    #print(r.headers)
     if r.status_code == 200:
         with open(out_file, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024):
@@ -180,11 +180,19 @@ def download_multi(base_url, api_key, polygon, out_folder, since=None, until=Non
     grid = create_grid(coords)
     slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
     Path(out_folder).mkdir(parents=True, exist_ok=True)
-    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
-    dsm_out = dsm_imagery_downloader(base_url, api_key, slippy_grid, out_folder, since, until)
-    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, out_folder, since, until, packs, out_format,
-                              lat_lon_direction,
-                              surveyResourceID)
+    ortho_out_folder = f"{out_folder}/ortho"
+    Path(ortho_out_folder).mkdir(parents=True, exist_ok=True)
+    print("Downloading Ortho Imagery")
+    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, ortho_out_folder, since, until)
+    dsm_out_folder = f"{out_folder}/dsm"
+    Path(dsm_out_folder).mkdir(parents=True, exist_ok=True)
+    print("Downloading DSM (Digital Surface Model) Data")
+    dsm_out = dsm_imagery_downloader(base_url, api_key, slippy_grid, dsm_out_folder, since, until)
+    ai_out_folder = f"{out_folder}/ai_packs"
+    Path(ai_out_folder).mkdir(parents=True, exist_ok=True)
+    print("Downloading AP Packs")
+    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, ai_out_folder, since, until, packs, out_format,
+                              lat_lon_direction, surveyResourceID)
 
     return slippy_grid, ortho_out, dsm_out, ai_out
 

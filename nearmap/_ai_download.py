@@ -2,8 +2,9 @@
 #   File name: _ai_download.py
 #   About: The Nearmap API for Python
 #   Author: Connor Tluck | Solutions Engineer | Nearmap
+#           Geoff Taylor | Sr Solutions Architect | Nearmap
 #   Date created: 7/10/2021
-#   Last update: 9/06/2021
+#   Last update: 9/28/2021
 #   Python Version: 3.6+
 ####################################
 
@@ -174,17 +175,17 @@ def generate_ai_pack(base_url, api_key, df_parcels, out_folder, since=None, unti
             # define the polygon being used on the current roaw
             current_grid = list(poly_obj.exterior.coords)
             polygon = [item for sublist in current_grid for item in sublist]
-            print('THIS IS A POLYGON REQUEST')
-            print(polygon)
+            # print('THIS IS A POLYGON REQUEST')
+            # print(polygon)
             # make request for json data for the formatted polygon
             response = aiFeaturesV4(base_url, api_key, polygon, since, until, packs, out_format="json",
                                     lat_lon_direction="yx")
-            print('THIS IS THE RESPONSE')
-            print(response)
+            # print('THIS IS THE RESPONSE')
+            # print(response)
             df_features = get_parcel_as_geodataframe(response, poly_obj)
             full_ai_df = full_ai_df.append(df_features)
 
-    print(type(full_ai_df))
+    # print(type(full_ai_df))
     full_ai_gdf = gpd.GeoDataFrame(full_ai_df, geometry='geometry')
 
     process_payload(full_ai_gdf, out_folder, save=True)
@@ -310,8 +311,8 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
         gdal.Translate(dst_dataset, src_dataset, format=format, width=width, height=height, projWin=projWin,
                        projWinSRS=projWinSRS, outputSRS=outputSRS)
     else:
-        print(gdal_string)
-
+        # print(gdal_string)
+        pass
     _update_xml_api_key(xml_file=src_dataset, source_string=api_key, replace_string="{api_key}")
 
 
