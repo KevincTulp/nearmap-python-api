@@ -31,7 +31,7 @@ out_folder = f"{root}/nearmap/unit_tests/TestData/scratch"
 
 since = None  # Since Data ex: "2018-08-01"
 until = None   # Until Date ex: "2021-07-09"
-packs = None  # Set to None for all packs otherw    ise type pack of interest name(s)
+packs = None  # Set to None for all packs otherwise type pack of interest name(s)
 
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string

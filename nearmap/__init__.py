@@ -198,8 +198,9 @@ class NEARMAP(object):
         return _api.download_ai(self.base_url, self.api_key, polygon, out_folder, since, until, packs,
                                 out_format, lat_lon_direction, surveyResourceID)
 
-    def download_multi(self, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
-                       lat_lon_direction="yx", surveyResourceID=None):
+    def download_multi(self, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None, include=None,
+                       exclude=None, packs=None, out_format="json", lat_lon_direction="yx", surveyResourceID=None):
+
         """
                Full AEC content stack downloading function. This function will allow a user to input an area of interest
                then will be returned high res ortho imagery, DSM and AI data, saved locally.
@@ -257,8 +258,9 @@ class NEARMAP(object):
                ===============     ====================================================================
                :return: json, text, or pandas dataframe object
                """
-        return _api.download_multi(self.base_url, self.api_key, polygon, out_folder, since, until, packs,
-                                   out_format, lat_lon_direction, surveyResourceID)
+
+        return _api.download_multi(self.base_url, self.api_key, polygon, out_folder, tertiary, since, until, mosaic,
+                                   include, exclude, packs, out_format, lat_lon_direction, surveyResourceID)
 
     ###############
     #  NEARMAP AI

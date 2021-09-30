@@ -173,8 +173,10 @@ def download_ai(base_url, api_key, polygon, out_folder, since=None, until=None, 
     return slippy_grid, ai_out
 
 
-def download_multi(base_url, api_key, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
-                lat_lon_direction="yx", surveyResourceID=None):
+def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None,
+                   include=None, exclude=None, packs=None, out_format="json", lat_lon_direction="yx",
+                   surveyResourceID=None):
+
     from nearmap._ai_download import ortho_imagery_downloader, dsm_imagery_downloader, generate_ai_pack
     from nearmap._download import get_coords, create_grid, grid_to_slippy_grid
 
@@ -185,7 +187,9 @@ def download_multi(base_url, api_key, polygon, out_folder, since=None, until=Non
     ortho_out_folder = f"{out_folder}/ortho"
     Path(ortho_out_folder).mkdir(parents=True, exist_ok=True)
     print("Downloading Ortho Imagery")
-    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, ortho_out_folder, since, until)
+
+    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, ortho_out_folder, tertiary, since, until,
+                                         mosaic, include, exclude)
     dsm_out_folder = f"{out_folder}/dsm"
     Path(dsm_out_folder).mkdir(parents=True, exist_ok=True)
     print("Downloading DSM (Digital Surface Model) Data")
