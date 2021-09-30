@@ -233,8 +233,8 @@ def get_payload(request_string):
         return None
 
 
-def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, out_folder, res=False,
-                            run_cmd=False):
+def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, out_folder, tertiary=None,
+                            since=None, until=None, mosaic=None, include=None, exclude=None, res=False, run_cmd=False):
     """
     The function contains simple parameter processing to take in user input for top of grid square and bottom of
     grid square, convert those coordinates into the python gdal binding requests for gdal translate options.
@@ -305,7 +305,32 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
     src_dataset = f'{root_dir}/tile_dl.xml'
     dst_dataset = out_folder
 
-    _update_xml_api_key(xml_file=src_dataset, source_string="{api_key}", replace_string=api_key)
+    def structure_rest_endpoint(url, tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None):
+        if tertiary:
+            url += "&tertiary=satellite"
+        if since:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        if until:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        if mosaic:
+            mosaic_options = ["latest", "earliest"]
+            if mosaic.lower() in mosaic_options:
+                url += f"&mosaic={mosaic.lower()}"
+            else:
+                raise Exception(f"error: mosaic input string not a member of {mosaic_options}")
+        if include:
+            # TODO: Assess tag inclusion and auto-formatting json, list, etc into the schema. fun...
+            url += f"&include={include}"
+        if exclude:
+            # TODO: Assess tag exclusion and auto-formatting json, list, etc into the schema. fun....
+            url += f"&exclude={exclude}"
+        return url
+
+    structured_endpoint = structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+
+    _update_xml_api_key(xml_file=src_dataset, source_string="{api_key}", replace_string=structured_endpoint)
 
     if run_cmd is True:
         gdal.Translate(dst_dataset, src_dataset, format=format, width=width, height=height, projWin=projWin,
@@ -313,10 +338,13 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
     else:
         # print(gdal_string)
         pass
-    _update_xml_api_key(xml_file=src_dataset, source_string=api_key, replace_string="{api_key}")
+
+    structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+    _update_xml_api_key(xml_file=src_dataset, source_string=structured_endpoint, replace_string="{api_key}")
 
 
-def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None, until=None):
+def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, tertiary=None, since=None, until=None,
+                             mosaic=None, include=None, exclude=None):
 
     """
    The following function is the main processing function for the ortho imagery request. The function will take in a
@@ -337,8 +365,7 @@ def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=No
             static_image_name = out_folder + f'/static_image_cell_number_{row}.tif'
 
             static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, static_image_name,
-                                    res=False,
-                                    run_cmd=True)  # create image
+                                    tertiary, since, until, mosaic, include, exclude, res=False, run_cmd=True)  # create image
 
 
 def dsm_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None, until=None):

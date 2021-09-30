@@ -28,8 +28,14 @@ in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KML/doc.kml"
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/GDB/TestData.gdb/AOI"
 
 out_folder = f"{root}/nearmap/unit_tests/TestData/scratch"
+tertiary = None
+since = None
+until = None
+mosaic = None
+include = None
+exclude = None
 
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
-nearmap.download_ortho(in_feature, out_folder)
+nearmap.download_ortho(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude)
