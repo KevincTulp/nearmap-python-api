@@ -28,8 +28,11 @@ in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KML/doc.kml"
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/GDB/TestData.gdb/AOI"
 
 out_folder = f"{root}/nearmap/unit_tests/TestData/scratch"
+since = None
+until = None
+fields = None
 
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
-nearmap.download_dsm(in_feature, out_folder)
+nearmap.download_dsm(in_feature, out_folder, since, until, fields)

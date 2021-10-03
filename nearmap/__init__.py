@@ -90,7 +90,7 @@ class NEARMAP(object):
         return _api.download_ortho(self.base_url, self.api_key, polygon, out_folder, tertiary, since, until, mosaic,
                                    include, exclude)
 
-    def download_dsm(self, polygon, out_folder, since=None, until=None):
+    def download_dsm(self, polygon, out_folder, since=None, until=None, fields=None):
         """
                 Functions handles the DSM download process using python api wrappers and a grid system which
                 will cover the user defined area. Results will be fed back via this grid of roughly 100m x 100m mosiac.
@@ -131,10 +131,26 @@ class NEARMAP(object):
                                         request returns asi data of the next available date before the specified date.
                                         -If neither since nor until are specified, the request returns the latest ai
                                         data.
+
+                ---------------     --------------------------------------------------------------------
+                fields              Optional string. Comma separated list of field names that will appear in the
+                                    response. The id field will always be among the returned fields, even if it is not
+                                    specified. If this parameter is not present, then all fields are returned.
+
+                                    This can be any or all of:
+                                        "id"
+                                        "captureDate"
+                                        "firstPhotoTime"
+                                        "lastPhotoTime"
+                                        "pixelSizes"
+
+                                    Example: "id,captureDate,firstPhotoTime,lastPhotoTime,pixelSizes"
+
+                                    Note: the fields values are case sensitive.
                 ===============     ====================================================================
                 :return: tif file responses in a mosiac of the area of interest.
                 """
-        return _api.download_dsm(self.base_url, self.api_key, polygon, out_folder, since, until)
+        return _api.download_dsm(self.base_url, self.api_key, polygon, out_folder, since, until, fields)
 
     def download_ai(self, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
                     lat_lon_direction="yx", surveyResourceID=None):

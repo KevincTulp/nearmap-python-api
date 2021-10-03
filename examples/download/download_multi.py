@@ -35,8 +35,9 @@ mosaic = None
 include = None
 exclude = None
 packs = None
+out_format = "json"  # Of Type: "json" or "gpkg"
 
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
-nearmap.download_multi(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude, packs)
+nearmap.download_multi(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude, packs, out_format)

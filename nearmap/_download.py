@@ -8,412 +8,404 @@
 #   Python Version: 3.6+
 ####################################
 
-from zipfile import ZipFile
-import xml.etree.ElementTree as ET
-import math
-from os.path import split
-import pandas as pd
-from shapely.geometry import Polygon
-from pyproj import Proj, transform
-
 try:
-    from ujson import loads
+    from ujson import dump, dumps
 except ModuleNotFoundError:
-    from json import loads
+    from json import dump, dumps
 
 
-def _nest_level(lst):
-    if not isinstance(lst, list):
-        return 0
-    if not lst:
-        return 1
-    return max(_nest_level(lst[0]) + 1, _nest_level(lst[1:]))
-
-
-def get_shp_coords(in_shp):
+def process_payload(combined_dataframe, out_folder, out_format, save=True):
     """
-    The following function obtains coordinates from a shapefile
+    The following function is used to save the AI payload to user local machine
     ===============     ====================================================================
     **Argument**        **Description**
     ---------------     --------------------------------------------------------------------
-    in_file             Required String:    File Input
-                        Supported File formats are:
-                            - .shp
+    combined_dataframe   Required dataframe: input geopandas dataframe which is being processed.
+    ---------------     --------------------------------------------------------------------
+    out_folder   Required String: Location to save the output files.
+    ---------------     --------------------------------------------------------------------
+    save                Optional: Toggle to run the function or not and produce save outputs.
     ===============     ====================================================================
-    :return: list of geometry coordinates
+    :return: AI feature payload in a geopackage
     """
-    try:
-        import fiona
-        coords = []
-        with fiona.open(in_shp) as c:
-            for i, record in enumerate(c):
-                coords.append(record['geometry']['coordinates'][0])
-        return coords
-    except ModuleNotFoundError:
-        print("Shapefile processing requires Fiona: https://github.com/Toblerity/Fiona | Library not detected")
-        exit()
+    import json
+
+    df_features = combined_dataframe
+    response = df_features.to_json()
+
+    if save:
+        supported_formats = ["gpkg", "json"]
+        assert out_format.lower().replace(".", "") in supported_formats, f"Error: Out Format {out_format} not a " \
+                                                                         f"member of {supported_formats}"
+        if out_format.lower().replace(".", "") == "json":
+            with open(f"{out_folder}/ai_download.json", 'w') as f:
+                json.dump(response, f)
+        elif out_format.lower().replace(".", "") == "gpkg":
+            df_features_saveable = (df_features.assign(
+                description=df_features.description.astype('str'),
+            ))
+            if len(df_features) > 1:  # Not just parcel polygon
+                df_features_saveable['attributes'] = df_features_saveable.attributes.apply(
+                    lambda j: json.dumps(j, indent=2))  # Render attributes as string so it can be saved as a geopackage
+            df_features_saveable.to_file(f"{out_folder}/ai_download.gpkg", driver="GPKG")
+    return df_features
 
 
-def get_feature_class_coords(in_feature_class):
+def process_payload_parse(combined_dataframe, out_folder, out_format, save=True):
     """
-    The following function obtains coordinates from a feature class within a file geodatabase .gdb
+    The following function is used to save the AI payload to user local machine, parsed by description
     ===============     ====================================================================
     **Argument**        **Description**
     ---------------     --------------------------------------------------------------------
-    in_file             Required String:    File Input
-                        Supported File formats are:
-                            - .gdb/myFeatureClassName
+    combined_dataframe   Required dataframe: input geopandas dataframe which is being processed.
+    ---------------     --------------------------------------------------------------------
+    out_folder   Required String: Location to save the output files.
+    ---------------     --------------------------------------------------------------------
+    save                Optional: Toggle to run the function or not and produce save outputs.
     ===============     ====================================================================
-    :return: list of geometry coordinates
+    :return: AI feature payload in a geopackage, one unique geopackage per unique feature by description
     """
-    try:
-        import fiona
-        coords = []
-        # head and tail pair
-        gdb, fc = split(in_feature_class)
-        with fiona.open(gdb, layer=fc) as c:
-            for i, record in enumerate(c):
-                coords.append(record['geometry']['coordinates'][0][0])
-        return coords
-    except ModuleNotFoundError:
-        print("FeatureClass processing requires Fiona: https://github.com/Toblerity/Fiona | Library not detected")
-        exit()
+    import json
+
+    df_features = combined_dataframe
+
+    if save:
+        supported_formats = ["gpkg", "json"]
+        assert out_format.lower().replace(".", "") in supported_formats, f"Error: Out Format {out_format} not a " \
+                                                                         f"member of {supported_formats}"
+        feature_divided_dict = {}
+        for key in df_features['description'].unique():
+            current_key_df = df_features[df_features['description'] == key]
+            feature_divided_dict[key] = current_key_df
+        if out_format.lower().replace(".", "") == "json":
+            for feature in list(df_features.description.unique()):
+                parsed_df = df_features[df_features['description'] == feature]
+                parsed_json = parsed_df.to_json()
+                with open(out_folder + "/ai_download_" + f"{feature}.json", 'w') as f:
+                    json.dump(parsed_json, f)
+        elif out_format.lower().replace(".", "") == "gpkg":
+            for attribute in feature_divided_dict:
+                df_features = feature_divided_dict[attribute]
+                df_features_saveable = (df_features.assign(
+                    description=df_features.description.astype('str'),
+                ))
+                df_features_saveable['attributes'] = df_features_saveable.attributes.apply(
+                    lambda j: json.dumps(j, indent=2))  # Render attributes as string so it can be saved as a geopackage
+                df_features_saveable.to_file(out_folder + "/ai_download_" + f"{attribute}.gpkg", driver="GPKG")
+    return df_features
 
 
-def get_json_coords(in_json):
+def get_parcel_as_geodataframe(payload, parcel_poly):
     """
-    The following function obtains coordinates from json and geojson files
+    The following function is used to process the AI API json output into a geodataframe (geopandas). Deals with
+    json response nesting and header creation to set up the geodataframe
     ===============     ====================================================================
     **Argument**        **Description**
     ---------------     --------------------------------------------------------------------
-    in_file             Required String:    File Input
-                        Supported File formats are:
-                            -json
-    ===============     ====================================================================
-    :return: list of geometry coordinates
-    """
-    with open(in_json, 'r') as f:
-        data = f.read()
-    obj = loads(data)
-    try:  # Check for geoJSON and process if geoJSON
-        # features = obj["features"][0]["geometry"]["coordinates"] #old code returned error
-        features = [tuple(x) for x in obj["features"][0]["geometry"]["coordinates"][0]] #returns in form: [(-72.6639175415039, 41.759131982892384), (-72.6665997505188, 41.7591479892674)...
-        return features
-    except KeyError as e:  # Input is Standard JSON
-        if str(e).lower().replace("'", "") == "coordinates":
-            try:
-                spatial_ref = obj["spatialReference"]["wkid"]
-                if spatial_ref == 4326:
-                    features = obj["features"][0]["geometry"]["rings"]
-                    return features
-                else:
-                    print(f"Input JSON spatial reference must be WGS84 wkid 4326. Detected {spatial_ref} instead...")
-                    exit()
-            except KeyError as e:
-                print(f"Could not detect spatial reference in json file | {e}")
-                exit()
-
-
-def get_kml_coords(in_file):
-    """
-    The following function obtains coordinates from kml and kmz files
-    ===============     ====================================================================
-    **Argument**        **Description**
+    payload             Required json: input json which is being processed.
     ---------------     --------------------------------------------------------------------
-    in_file             Required String:    File Input
-                        Supported File formats are:
-                            -KMZ
-                            -KML
+    parcel_poly         Required shapely object: Geometry from the parcel dataframe which to set as the geometry of the
+                        the geodataframe row.
     ===============     ====================================================================
-    :return: list of geometry coordinates
+    :return: Geodataframe
     """
-    kml = in_file
-    if in_file.endswith("kmz"):
-        kmz = ZipFile(in_file, 'r')
-        kml = kmz.open('doc.kml', 'r')
-    root = ET.parse(kml).getroot()
-    coord_list = []
-    for description in root.iter('{http://www.opengis.net/kml/2.2}coordinates'):
-        coords = [float(i) for i in description.text.strip().replace("0 ", "").split(",")]
-        if coords[-1] == 0:
-            del coords[-1]
-        coord_list.append(list(zip(coords[::2], coords[1::2])))
-    return coord_list
+    import shapely
+    import geopandas as gpd
+    '''
+    Convert each feature in the payload into a row of a geopandas GeoDataFrame, and its attributes as a nested dictionary parsed from the json as an "attributes" column.
+    '''
+    df_features = [{'geometry': parcel_poly, 'description': 'Parcel Polygon', 'classId': 0, 'link': '',
+                    'systemVersion': payload["systemVersion"], 'confidence': 1}]
+    for feature in payload['features']:
+        poly = shapely.geometry.shape(feature['geometry'])
+        feature_tmp = feature.copy()
+        feature_tmp['geometry'] = poly
+
+        feature_tmp['parentId'] = str(feature['parentId'])
+        feature_tmp['link'] = payload['link']
+        feature_tmp['systemVersion'] = payload['systemVersion']
+        if 'attributes' in feature:
+            feature_tmp['attributes'] = feature['attributes']
+        df_features.append(feature_tmp)
+
+    df_features = gpd.GeoDataFrame(df_features, geometry='geometry', crs='EPSG:4326')
+
+    # clean up the descriptions for windows string compatability issues with '>' and '<'
+    cleaned_feature_descriptions = []
+    for index, row in df_features.iterrows():
+        unprocessed_description = row['description']
+        processed_description = unprocessed_description.replace('>', 'greater than ').replace('<',
+                                                                                              'less than ').replace('/',
+                                                                                                                    ' ')
+        cleaned_feature_descriptions.append(processed_description)
+    df_features['description'] = cleaned_feature_descriptions
+    df_features = df_features.sort_values('description')
+    return df_features
 
 
-def get_coords(in_file):
+def generate_ai_pack(base_url, api_key, df_parcels, out_folder, since=None, until=None, packs=None,
+                     out_format="json", lat_lon_direction="yx", surveyResourceID=None):
+
     """
-    The following function obtains coordinates from the input feature types
-    ===============     ====================================================================
-    **Argument**        **Description**
-    ---------------     --------------------------------------------------------------------
-    in_file             Required String:    File Input
-                        Supported file formats are::
-                            -Standard JSON
-                            -GeoJSON
-                            -KMZ
-                            -KML
-    ===============     ====================================================================
-    :return: list of geometry coordinates
-    """
-    if in_file.endswith("json"):
-        return get_json_coords(in_json=in_file)
-    elif in_file.endswith(tuple(["kmz", "kml"])):
-        return get_kml_coords(in_file=in_file)
-    elif ".shp" in in_file:
-        return get_shp_coords(in_shp=in_file)
-    elif ".gdb" in in_file:
-        return get_feature_class_coords(in_feature_class=in_file)
-    else:
-        print(f"file format {in_file} not supported...")
+   The following function is the main processing function for the AI data request. The function will take in a user
+   request and return saved json or geopackage files.
+   Note: See __init__.py.download_ai for full description.
+   :return: geopackage of all features as well as geopackage for each individual feature.
+   """
+    import geopandas as gpd
+    from nearmap._api import aiFeaturesV4
 
+    # TODO automatically derive from first feature in json.
+    column_names = ['geometry',
+                    'description',
+                    'classId',
+                    'link',
+                    'systemVersion',
+                    'confidence',
+                    'id',
+                    'parentId',
+                    'areaSqm',
+                    'areaSqft',
+                    'attributes',
+                    'surveyDate',
+                    'meshDate']
 
-def create_grid(in_polygon):  # Create Grid Row
-    """
-    The following function generates a unit grid. This grid has a defined standard grid size as well as a standard
-    grid shift. This grid is used to make API calls that are an acceptable size. The sizing is somewhat arbitrary but
-    falls within the allowable size restrictions of the AI and DSM apis.
-    ===============     ====================================================================
-    **Argument**        **Description**
-    ---------------     --------------------------------------------------------------------
-    in_polygon          Required list:  Required list of coords for a single polygon.
-    ===============     ====================================================================
-    :return: list of grid coords
-    """
+    full_ai_df = gpd.GeoDataFrame(columns=column_names, crs='EPSG:4326')
+    full_ai_df.set_geometry(col='geometry', inplace=True)
 
-    # create unit box move equations to help make the grid once we create our first grid square.
-    def _unit_box_move_x(grid_box, x_number=0):
-        # unit box shift
-        delta_x = (72.6685631 - 72.6661572) * x_number
-        right_shift_output_box = []
-        for coordinate in grid_box:
-            right_shift_output_box.append((coordinate[0] + delta_x, coordinate[1]))
-        return right_shift_output_box
-
-    def _unit_box_move_y(grid_box, y_number=0):
-        # unit box shift
-        delta_y = (41.7575483 - 41.7557535) * y_number
-        down_shift_output_box = []
-        for coordinate in grid_box:
-            down_shift_output_box.append((coordinate[0], coordinate[1] - delta_y))
-        return down_shift_output_box
-
-    list_of_x = []
-    list_of_y = []
-    grid = []
-    nesting_level = _nest_level(in_polygon)
-    assert nesting_level in [2, 1], "Error, input polygon cannot be read."
-    if nesting_level == 2:
-        feature_count = len(in_polygon)
-        assert feature_count == 1, f"Error, process only supports a single polygon... detected {feature_count} polygons"
-        for geom in in_polygon:
-            for coord in geom:
-                list_of_x.append(coord[0])
-                list_of_y.append(coord[1])
-    elif nesting_level == 1:
-        for coord in in_polygon:
-            list_of_x.append(coord[0])
-            list_of_y.append(coord[1])
-    min_x = min(list_of_x)
-    max_x = max(list_of_x)
-    min_y = min(list_of_y)
-    max_y = max(list_of_y)
-
-    # set the grid origin
-    grid_origin = (min_x, max_y)
-    delta_x = (72.6685631-72.6661572)
-    delta_y = (41.7575483-41.7557535)
-
-    # set unit box to the origin
-    starting_box = [grid_origin,
-                    (grid_origin[0]+delta_x, grid_origin[1]),
-                    (grid_origin[0]+delta_x, grid_origin[1]-delta_y),
-                    (grid_origin[0], grid_origin[1]-delta_y),
-                    grid_origin]
-
-    # determine number of grids in the x and y direction.
-    total_x_change = abs(max_x - min_x)  # find total x change
-    number_of_x_grids = math.ceil(total_x_change/delta_x)  # divide by the shift size to find number of grids required
-
-    total_y_change = abs(max_y - min_y)  # find total y change
-    number_of_y_grids = math.ceil(total_y_change/delta_y)  # divide by the shift size to find number of grids required
-
-    total = number_of_x_grids*number_of_y_grids
-
-    # this box is a shapely object set at the origin point and crated using the delta x and delta y values.
-    starting_box_shapely = Polygon(starting_box)
-
-    # first x movement across the axis
-    current_row_y = 0
-    current_column_x = 0
-
-    working_box = starting_box
-    for i in list(range(number_of_x_grids)):
-        current_column_x = current_column_x + 1
-        grid.append(Polygon(working_box))
-        working_box = _unit_box_move_x(starting_box, current_column_x)
-
-    working_box = starting_box
-    for i in list(range(number_of_y_grids)):
-        current_column_x = 0
-        current_row_y = current_row_y + 1
-        y_adjusted_grid = _unit_box_move_y(starting_box, current_row_y)
-        for i in list(range(number_of_x_grids)):
-            grid.append(Polygon(y_adjusted_grid))
-            current_column_x = current_column_x + 1
-            y_adjusted_grid = _unit_box_move_y(starting_box, current_row_y)
-            y_adjusted_grid = _unit_box_move_x(y_adjusted_grid, current_column_x)
-
-    return grid
-
-
-def grid_to_slippy_grid(in_polygon_coords, in_grid):
-
-    def _deg_to_num(lon_deg, lat_deg, zoom):
-        lat_rad = math.radians(lat_deg)
-        n = 2.0 ** zoom
-        xtile = int((lon_deg + 180.0) / 360.0 * n)
-        ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
-        return xtile, ytile, zoom
-
-    def _coord_lister(geom):
-        return list(geom.exterior.coords)
-
-    nesting_level = _nest_level(in_polygon_coords)
-    assert nesting_level in [2, 1], "Error, input polygon cannot be read."
-    if nesting_level == 2:
-        feature_count = len(in_polygon_coords)
-        assert feature_count == 1, f"Error, process only supports a single polygon... detected {feature_count} polygons"
-        in_polygon_coords = Polygon(in_polygon_coords[0])
-    elif nesting_level == 1:
-        in_polygon_coords = Polygon(in_polygon_coords)
-    grid_layout = pd.DataFrame(in_grid, columns=['tile'])
-    df_parcels = grid_layout
-
-    # convert testing box to slippy
-    slippy_testing_box = []
-    zoom = 20
-    for row, column in df_parcels.iterrows():
-        current_row_listed_coordinates = _coord_lister(column.tile)
-        processing_list = []
-        for coordinate in current_row_listed_coordinates:
-            processing_list.append(_deg_to_num(coordinate[0], coordinate[1], zoom))
-        slippy_testing_box.append(processing_list)
-
-    df_parcels['slippy_grid'] = slippy_testing_box
-
-    x_grid_size = df_parcels['slippy_grid'][1][0][0] - df_parcels['slippy_grid'][0][0][0]
-    y_grid_size = None
-
-    for row, column in df_parcels.iterrows():
-        # check for the first time the y changes on the grid
-        change_in_y = df_parcels.iloc[row + 1]['slippy_grid'][0][1] - df_parcels.iloc[row]['slippy_grid'][0][1]
-        if change_in_y == 0:
-            pass
-        else:
-            y_grid_size = change_in_y
-            break
-
-    intersection_geometries = []
-    for row, column in df_parcels.iterrows():
-        intersection_geometries.append(in_polygon_coords.intersection(column.tile))
-    df_parcels['geometry'] = intersection_geometries
-
-    df_parcels['tile_number'] = list(range(df_parcels.index.stop))
-
-    return df_parcels
-
-
-def generate_static_images(df_parcels, api_key, since=None, until=None, limit=1000, offset=0, fields=None,
-                           sort="captureDate", overlap=None, include=None, exclude=None):
-
-    from _api import polyV2
-    base_url = "https://api.nearmap.com/"
-
-    def gdal_string_cmdrun(api_key, top_left_lon_lat, bottom_right_lon_lat, output_file_name, max_res=False,
-                           run_cmd=False):
-
-        def _geom_extent(coord_list):
-            x_coords = coord_list[::2]
-            y_coords = coord_list[1::2]
-            return f"{min(x_coords)}, {min(y_coords)}, {max(x_coords)}, {max(y_coords)}"
-
-        from osgeo import gdal
-
-        # flip coordinate to agree with aussies.
-        #     top_left_lon_lat = top_left_lon_lat[1], top_left_lon_lat[0]
-        #     bottom_right_lon_lat = bottom_right_lon_lat[1], bottom_right_lon_lat[0]
-
-        # create a bounding box for coverage api call
-        box = [top_left_lon_lat[0], top_left_lon_lat[1],
-               top_left_lon_lat[0], bottom_right_lon_lat[1],
-               bottom_right_lon_lat[0], top_left_lon_lat[1],
-               bottom_right_lon_lat[0], bottom_right_lon_lat[1],
-               top_left_lon_lat[0], top_left_lon_lat[1]]
-
-        # convert bounding box to extent format
-        box = _geom_extent(box)
-
-        '''This will return a json of the coverage in the AOI'''
-
-        # Set Resolution as HC2 max res
-        coverage_json = polyV2(base_url, api_key, box, since, until, limit, offset, fields, sort, overlap, include,
-                               exclude)
-        print(coverage_json)
-        df = pd.DataFrame(data=coverage_json['surveys'])
-        df.sort_values(by=['captureDate'], ascending=False, inplace=True)
-        resolution = df.head(1)['pixelSize'].values[0]
-
-        if max_res:
-            resolution = resolution
-        else:
-            resolution = .40
-        print('Resolution is: ' + str(resolution))
-
-        '''First Bounding Box Coordinate, TOP LEFT'''
-        top_left = transform(Proj(init='epsg:4326'), Proj(init='epsg:3857'), top_left_lon_lat[0], top_left_lon_lat[1])
-        # print(transform(Proj(init='epsg:4326'), Proj(init='epsg:3857'), -72.672874, 41.759577))  # longitude first, latitude second.
-        # output (meters east of 0, meters north of 0): (-8089907.32816373, 5125033.0039063785)
-        '''Second Bounding Box Coordinate, BOTTOM RIGHT'''
-        bottom_right = transform(Proj(init='epsg:4326'), Proj(init='epsg:3857'), bottom_right_lon_lat[0],
-                                 bottom_right_lon_lat[1])
-        # print(transform(Proj(init='epsg:4326'), Proj(init='epsg:3857'), -72.658641, 41.751525))  # longitude first, latitude second.
-        # output (meters east of 0, meters north of 0): (-8089907.32816373, 5125033.0039063785)
-
-        long_difference = bottom_right[0] - top_left[0]
-        lat_difference = bottom_right[1] - top_left[1]
-        long_pixel_count = abs(long_difference / resolution)
-        lat_pixel_count = abs(lat_difference / resolution)
-
-        #################
-
-        #     print('gdal_translate --debug ON  -a_srs EPSG:3857 -projwin ' + tuple_to_string(top_left_lon_lat) + tuple_to_string(bottom_right_lon_lat) + '-projwin_srs "EPSG:4326" -outsize ' + str(long_pixel_count) + ' ' +str(lat_pixel_count) + ' tile_dl_blank.xml coltgateway.tif')
-
-        print(top_left_lon_lat)
-
-        '''
-        top_left = tuple_to_string(top_left_lon_lat)
-        bottom_right = tuple_to_string(bottom_right_lon_lat)
-        output_file_name = output_file_name
-        gdal_string = f'gdal_translate --debug ON -a_srs EPSG:3857 -projwin {top_left}{bottom_right}-projwin_srs "EPSG:4326" -outsize {long_pixel_count} {lat_pixel_count} tile_dl.xml {output_file_name}'
-        #     os.chdir(temp_dir)
-        #     os.getcwd()
-        if run_cmd == True:
-            print(getcwd())
-            print(gdal_string)
-            print(f'{temp_dir}')
-            run(gdal_string, shell=True)
-        else:
-            print(gdal_string)
-        #TODO: replace the above with python gdal translate https://gis.stackexchange.com/questions/352643/gdal-translate-in-python-where-do-i-find-how-to-convert-the-command-line-argum
-        '''
-
+    # Specify the AI Packs. This list represents all AI Packs that are currently available.
     for row, column in df_parcels.iterrows():
         if not column.geometry.is_empty:
-            top_left_lon_lat = list(df_parcels.tile[row].exterior.coords[0])
-            bottom_right_lon_lat = list(df_parcels.tile[row].exterior.coords[2])
-            static_image_name = f'static_image_cell_number_{row}.tif'
-            print(top_left_lon_lat, bottom_right_lon_lat, static_image_name)
+            # pull the shapely polygon from the current row of grid df
+            poly_obj = df_parcels.loc[row, 'geometry']
+            # define the polygon being used on the current roaw
+            current_grid = list(poly_obj.exterior.coords)
+            polygon = [item for sublist in current_grid for item in sublist]
+            # print('THIS IS A POLYGON REQUEST')
+            # print(polygon)
+            # make request for json data for the formatted polygon
+            response = aiFeaturesV4(base_url, api_key, polygon, since, until, packs, out_format="json",
+                                    lat_lon_direction="yx")
+            # print('THIS IS THE RESPONSE')
+            # print(response)
+            df_features = get_parcel_as_geodataframe(response, poly_obj)
+            full_ai_df = full_ai_df.append(df_features)
 
-            gdal_string_cmdrun(api_key, top_left_lon_lat, bottom_right_lon_lat, static_image_name, max_res=False,
-                               run_cmd=True)  # create image
+    # print(type(full_ai_df))
+    full_ai_gdf = gpd.GeoDataFrame(full_ai_df, geometry='geometry')
+
+    process_payload(full_ai_gdf, out_folder, out_format, save=True)
+    process_payload_parse(full_ai_gdf, out_folder, out_format, save=True)
+
+    return full_ai_df
+
+
+def convert(list_to_convert):
+    s = [str(i) for i in list_to_convert]  # Converting integer list to string list
+    res = str(",".join(s))  # Join list items using join()
+    return res
+
+
+# define some functions for later
+def tuple_to_string(unformatted_tuple):
+    raw_string = ""
+    for i in unformatted_tuple:
+        raw_string = raw_string + str(i)
+        raw_string = raw_string + ' '
+    return raw_string
+
+
+def get_payload(request_string):
+    import requests
+    import logging
+    '''
+    Basic wrapper code to retrieve the JSON payload from the API, and raise an error if no response is given.
+    Using urllib3, this also implements exponential backoff and retries for robustness.
+    '''
+    s = requests.Session()
+    response = s.get(request_string, )
+
+    if response.ok:
+        logging.info(f'Status Code: {response.status_code}')
+        logging.info(f'Status Message: {response.reason}')
+        payload = response.json()
+        return payload
+    else:
+        logging.error(f'Status Code: {response.status_code}')
+        logging.error(f'Status Message: {response.reason}')
+        logging.error(str(response))
+        payload = response.content
+        logging.error(str(payload))
+        return None
+
+
+def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, out_folder, tertiary=None,
+                            since=None, until=None, mosaic=None, include=None, exclude=None, res=False, run_cmd=False):
+    """
+    The function contains simple parameter processing to take in user input for top of grid square and bottom of
+    grid square, convert those coordinates into the python gdal binding requests for gdal translate options.
+    """
+    from pyproj import Proj, transform, Transformer
+    from osgeo import gdal
+    from pathlib import Path
+    import xml.etree.ElementTree as ET
+
+    def _update_xml_api_key(xml_file, source_string, replace_string):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        for elem in root.iter('Service'):
+            for item in elem.iter('ServerUrl'):
+                item.text = item.text.replace(source_string, replace_string)
+        tree.write(xml_file)
+
+    if res is False:
+        resolution = 0.40  # this is a standard low res return
+        # print(f"resolution is {resolution}")
+    else:
+        resolution = res
+
+    # print('Resolution is: ' + str(resolution))
+
+    # First Bounding Box Coordinate, TOP LEFT
+    transformer = Transformer.from_crs(4326, 3857, always_xy=True)
+    top_left, bottom_right = transformer.itransform([[top_left_long_lat[0], top_left_long_lat[1]],
+                                                     [bottom_right_long_lat[0], bottom_right_long_lat[1]]])
+    '''
+    print(f'top left dimension converted is: {top_left}')
+    print(top_left)  # long, lat
+    print(f'bottom right dimension converted is: {bottom_right}')
+    print(bottom_right)  # long, lat
+    '''
+
+    long_difference = bottom_right[0] - top_left[0]
+    lat_difference = bottom_right[1] - top_left[1]
+    long_pixel_count = abs(long_difference / resolution)
+    lat_pixel_count = abs(lat_difference / resolution)
+    '''
+    print('top left bounding box long and lat is: ' + str(top_left_long_lat))
+    print('bottom right bounding box long and lat is: ' + str(bottom_right_long_lat))
+    print('bouding box y axis pixel count: ' + str(long_pixel_count))
+    print('bouding box x axis pixel count: ' + str(lat_pixel_count))
+    
+    print('HERE IS YOUR FORMATTED STRING')
+    #     print('gdal_translate --debug ON  -a_srs EPSG:3857 -projwin ' + tuple_to_string(top_left_long_lat) + tuple_to_string(bottom_right_long_lat) + '-projwin_srs "EPSG:4326" -outsize ' + str(long_pixel_count) + ' ' +str(lat_pixel_count) + ' tile_dl_blank.xml coltgateway.tif')
+    '''
+    top_left = tuple_to_string(top_left_long_lat)
+    bottom_right = tuple_to_string(bottom_right_long_lat)
+
+    gdal_string = f'gdal_translate --debug ON -a_srs EPSG:3857 -projwin {top_left}{bottom_right}-projwin_srs "EPSG:4326" -outsize {long_pixel_count} {lat_pixel_count} tile_dl.xml {out_folder}'  # TODO xml is still being used, need to mvoe and chance the file.
+    '''
+    print('THIS IS THE GDAL STRING BELOW ME')
+    print(gdal_string)
+    '''
+
+    # this is the gdal translate binding parameters
+    format = "Gtiff"
+    projWin = [top_left_long_lat[0], top_left_long_lat[1], bottom_right_long_lat[0], bottom_right_long_lat[1]]
+    projWinSRS = "EPSG:4326"
+    outputSRS = "EPSG:3857"
+    width = lat_pixel_count
+    height = long_pixel_count
+    root_dir = Path(__file__).parent.resolve()
+    src_dataset = f'{root_dir}/tile_dl.xml'
+    dst_dataset = out_folder
+
+    def structure_rest_endpoint(url, tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None):
+        if tertiary:
+            url += "&tertiary=satellite"
+        if since:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        if until:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        if mosaic:
+            mosaic_options = ["latest", "earliest"]
+            if mosaic.lower() in mosaic_options:
+                url += f"&mosaic={mosaic.lower()}"
+            else:
+                raise Exception(f"error: mosaic input string not a member of {mosaic_options}")
+        if include:
+            # TODO: Assess tag inclusion and auto-formatting json, list, etc into the schema. fun...
+            url += f"&include={include}"
+        if exclude:
+            # TODO: Assess tag exclusion and auto-formatting json, list, etc into the schema. fun....
+            url += f"&exclude={exclude}"
+        return url
+
+    structured_endpoint = structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+
+    _update_xml_api_key(xml_file=src_dataset, source_string="{api_key}", replace_string=structured_endpoint)
+
+    if run_cmd is True:
+        gdal.Translate(dst_dataset, src_dataset, format=format, width=width, height=height, projWin=projWin,
+                       projWinSRS=projWinSRS, outputSRS=outputSRS)
+    else:
+        # print(gdal_string)
+        pass
+
+    structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+    _update_xml_api_key(xml_file=src_dataset, source_string=structured_endpoint, replace_string="{api_key}")
+
+
+def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, tertiary=None, since=None, until=None,
+                             mosaic=None, include=None, exclude=None):
+
+    """
+   The following function is the main processing function for the ortho imagery request. The function will take in a
+   user requested area and return saved tifs.
+   Note: See __init__.py.ortho_imagery_downloader for full description.
+   :return: tif files for each image tile that covers the requested area, user can decide resolution via parameters.
+      """
+    '''this code generates all static images by hitting the tile api and stitching them together for each grid in the parcel dataframe. uses the command prompt natively, still need to fix for file location selection'''
+    for row, column in df_parcels.iterrows():
+        if column.geometry.is_empty:
+            # print("geometry is empty PASSED")
+            pass
+        else:
+
+            top_left_long_lat = list(df_parcels.tile[row].exterior.coords[0])
+            bottom_right_long_lat = list(df_parcels.tile[row].exterior.coords[2])
+
+            static_image_name = out_folder + f'/static_image_cell_number_{row}.tif'
+
+            static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, static_image_name,
+                                    tertiary, since, until, mosaic, include, exclude, res=False, run_cmd=True)  # create image
+
+
+def dsm_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None, until=None, fields=None):
+    """
+        main function to handle DSM content downloads.
+        ================    ===============================================================
+        Note: See __init__.py.dsm_imagery_downloader for full description.
+        ================    ===============================================================
+    """
+    from nearmap._api import coverageStaticMapV2
+    from nearmap._api import imageStaticMapV2
+
+    for row, column in df_parcels.iterrows():
+
+        if column.geometry.is_empty:
+            # print('this was empty')
+            pass
+
+        else:
+            x = df_parcels.iloc[row].tile.centroid.coords[:]  # raw centroid point in a list of tuples
+            # print("DSM data is being Returned....")
+            # center_point_of_grid = str(x[0][0]) + ',' + str(x[0][1]) #unpack raw centroid coords into a string for the API call.
+
+            point = [x[0][0], x[0][1]]
+            radius = 100
+            resources = "DetailDsm"
+
+            coverage = coverageStaticMapV2(base_url, api_key, point=point, radius=radius, resources=resources,
+                                           overlap=None, since=since, until=until, fields=fields, limit=100,
+                                           offset=None, lat_lon_direction="yx")
+            transactionToken = coverage["transactionToken"]
+            most_recent_survey_id = coverage["surveys"][0]["id"]  # Gets most recent surveyID
+            tif_save_path = out_folder + '/DSM_' + 'Grid_Number_' + str(row) + '.tif'
+            imageStaticMapV2(base_url, api_key, surveyID=most_recent_survey_id, image_type=resources, file_format='tif',
+                             point=point, radius=radius, size="5000x5000",
+                             transactionToken=transactionToken,
+                             out_image=tif_save_path)
