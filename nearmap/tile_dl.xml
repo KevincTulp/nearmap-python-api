@@ -1,7 +1,7 @@
 <GDAL_WMS>
 <Service name="TMS">
 <Version>1.1.1</Version>
-	<ServerUrl>https://api.nearmap.com/tiles/v3/Vert/${z}/${x}/${y}.jpg?apikey={api_key}</ServerUrl>
+	<ServerUrl>https://api.nearmap.com/tiles/v3/Vert/${z}/${x}/${y}.jpg?apikey=YjViMGFmN2YtYjIxZi00ZTg1LTliZmYtNTQ3NmM1NWQ2NjY5</ServerUrl>
 </Service>
 <Projection>EPSG:3857</Projection>
 <DataWindow>
