@@ -359,19 +359,28 @@ def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, tertiary
    :return: tif files for each image tile that covers the requested area, user can decide resolution via parameters.
       """
     '''this code generates all static images by hitting the tile api and stitching them together for each grid in the parcel dataframe. uses the command prompt natively, still need to fix for file location selection'''
+    fail_list = []
     for row, column in df_parcels.iterrows():
+
         if column.geometry.is_empty:
             # print("geometry is empty PASSED")
             pass
         else:
-
             top_left_long_lat = list(df_parcels.tile[row].exterior.coords[0])
             bottom_right_long_lat = list(df_parcels.tile[row].exterior.coords[2])
 
-            static_image_name = out_folder + f'/static_image_cell_number_{row}.tif'
+            static_image_name = out_folder + f'/ortho_{row}.tif'
 
-            static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, static_image_name,
-                                    tertiary, since, until, mosaic, include, exclude, res=False, run_cmd=True)  # create image
+            try:
+                static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, static_image_name,
+                                        tertiary, since, until, mosaic, include, exclude, res=False, run_cmd=True)
+            except:
+                print("Error: Could not retrieve/process tile at this time... will re-attempt later in process")
+                fail_list.append([row, top_left_long_lat, bottom_right_long_lat, static_image_name])
+    for i in fail_list:
+        static_image_parameters(base_url, api_key, i[1], i[2], i[3], tertiary, since, until, mosaic,
+                                include, exclude, res=False, run_cmd=True)
+    return
 
 
 def dsm_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None, until=None, fields=None):
