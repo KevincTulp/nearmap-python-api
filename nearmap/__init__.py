@@ -65,6 +65,7 @@ class NEARMAP(object):
                                         jpg
                                         jp2
                                         png
+                                        cog
                ---------------     --------------------------------------------------------------------
                since               Optional string.    The first day from which to retrieve the ai data (inclusive).
                                    The two possible formats are:

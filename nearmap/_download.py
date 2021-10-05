@@ -239,7 +239,8 @@ def get_payload(request_string):
         return None
 
 
-def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, out_image, res=False, run_cmd=False):
+def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, out_image, zoom_level=None,
+                            res=False, run_cmd=False):
     """
     The function contains simple parameter processing to take in user input for top of grid square and bottom of
     grid square, convert those coordinates into the python gdal binding requests for gdal translate options.
@@ -248,12 +249,14 @@ def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, 
     from osgeo import gdal
     from pathlib import Path
 
+
     if res is False:
         resolution = .05  # this is a standard high res return
         # TODO: fix resolution
         # print(f"resolution is {resolution}")
     else:
         resolution = res
+
 
     # print('Resolution is: ' + str(resolution))
 
@@ -292,9 +295,13 @@ def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, 
     '''
 
     format = None
-    file_extension = Path(out_image).suffix.replace(".", "")
+    file_suffix = Path(out_image).suffix
+    file_extension = file_suffix.replace(".", "").lower()
     if file_extension == "tif":
         format = "Gtiff"
+    elif file_extension == "cog":
+        format = "COG"
+        out_image = out_image.replace(file_suffix, ".tif")
     elif file_extension == "jp2":
         format = "JP2OpenJPEG"
     elif file_extension == "jpg":

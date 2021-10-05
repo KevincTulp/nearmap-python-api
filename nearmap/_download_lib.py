@@ -156,6 +156,8 @@ def get_coords(in_file):
     ===============     ====================================================================
     :return: list of geometry coordinates
     """
+    if isinstance(in_file, list):
+        return in_file
     if in_file.endswith("json"):
         return get_json_coords(in_json=in_file)
     elif in_file.endswith(tuple(["kmz", "kml"])):

@@ -28,7 +28,7 @@ in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KML/doc.kml"
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/GDB/TestData.gdb/AOI"
 
 out_folder = f"{root}/nearmap/unit_tests/TestData/scratch"
-out_format = "tif"  # Member of "tif", "jpg", "jp2", "png"
+out_format = "tif"  # Member of "tif", "jpg", "jp2", "png", "cog"
 tertiary = None
 since = None
 until = None
