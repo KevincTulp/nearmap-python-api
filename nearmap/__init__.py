@@ -42,8 +42,8 @@ class NEARMAP(object):
     # Download Features
     ###################
 
-    def download_ortho(self, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None, include=None,
-                       exclude=None):
+    def download_ortho(self, polygon, out_folder, out_format="tif", tertiary=None, since=None, until=None, mosaic=None,
+                       include=None, exclude=None, zoom_level=None):
         """
                Functions handles the ortho download process using python api wrappers and a grid system which
                will cover the user defined area. Results will be fed back via this grid of roughly 100m x 100m mosiac.
@@ -56,8 +56,15 @@ class NEARMAP(object):
                polygon             Required string or list of lon/lat coords in WGS84 (EPSG : 4326)
                                    Example: "lon1,lat1,lon2,lat2,..." -or [lon1,lat1,lon2,lat2,...]
                ---------------     --------------------------------------------------------------------
-               out_folder   Required file location where the output tif responses will be saved.
+               out_folder          Required file location where the output tif responses will be saved.
                                    Example: file path
+               ---------------     --------------------------------------------------------------------
+               out_format           Required string. The format of the tile output.
+                                    The available values are:
+                                        tif - default if nothing is selected
+                                        jpg
+                                        jp2
+                                        png
                ---------------     --------------------------------------------------------------------
                since               Optional string.    The first day from which to retrieve the ai data (inclusive).
                                    The two possible formats are:
@@ -84,11 +91,41 @@ class NEARMAP(object):
                                        request returns asi data of the next available date before the specified date.
                                        -If neither since nor until are specified, the request returns the latest ai
                                        data.
+                ---------------     --------------------------------------------------------------------
+                mosaic              Optional string.    Specifies the order in which the surveys covering the specified
+                                    area are prioritised.
+                                    The available values are:
+                                        latest - the imagery with the later capture date is prioritised
+                                        earliest - imagery with the earlier capture date is prioritised
+                                    If the mosaic parameter is not specified, the imagery with the later capture date is
+                                    prioritised.
+                                    To return imagery on or after a specified date, use mosaic=earliest in combination
+                                    with the since parameter.
+                ---------------     --------------------------------------------------------------------
+                include             Optional string.    Filters surveys so that only those tagged with the type and name
+                                    specified are returned.
+                                    Tags are a type:name combination. You can also filter on type and name separately.
+                                    By comma separating you can include multiple tags, types and/or names.
+                                        type:name, e.g. disaster:hurricane
+                                        type, e.g. disaster
+                                        name, e.g. hurricane
+                                    Refer to Coverage API - Filter Surveys for further detail on tags.
+                                    https://docs.nearmap.com/display/ND/Coverage+API#CoverageAPI-FilterSurveys
+                ---------------     --------------------------------------------------------------------
+                exclude             Optional string.    Filters surveys so that only those not tagged with the type and name
+                                    specified are returned.
+                                    Tags are a type:name combination. You can also filter on type and name separately. By comma
+                                    separating you can include multiple tags, types and/or names.
+                                        type:name, e.g. disaster:hurricane
+                                        type, e.g. disaster
+                                        name, e.g. hurricane
+                                    Refer to Coverage API - Filter Surveys for further detail on tags.
+                                    https://docs.nearmap.com/display/ND/Coverage+API#CoverageAPI-FilterSurveys
                ===============     ====================================================================
                :return: tif file responses in a mosiac of the area of interest.
                """
-        return _api.download_ortho(self.base_url, self.api_key, polygon, out_folder, tertiary, since, until, mosaic,
-                                   include, exclude)
+        return _api.download_ortho(self.api_key, polygon, out_folder, out_format, tertiary, since, until, mosaic,
+                                   include, exclude, zoom_level)
 
     def download_dsm(self, polygon, out_folder, since=None, until=None, fields=None):
         """
@@ -215,7 +252,8 @@ class NEARMAP(object):
                                 out_format, lat_lon_direction, surveyResourceID)
 
     def download_multi(self, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None, include=None,
-                       exclude=None, packs=None, out_format="json", lat_lon_direction="yx", surveyResourceID=None):
+                       exclude=None, packs=None, out_ai_format="json", out_ortho_format="tif", lat_lon_direction="yx",
+                       surveyResourceID=None):
 
         """
                Full AEC content stack downloading function. This function will allow a user to input an area of interest
@@ -276,7 +314,8 @@ class NEARMAP(object):
                """
 
         return _api.download_multi(self.base_url, self.api_key, polygon, out_folder, tertiary, since, until, mosaic,
-                                   include, exclude, packs, out_format, lat_lon_direction, surveyResourceID)
+                                   include, exclude, packs, out_ai_format, out_ortho_format, lat_lon_direction,
+                                   surveyResourceID)
 
     ###############
     #  NEARMAP AI

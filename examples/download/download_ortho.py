@@ -28,6 +28,7 @@ in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KML/doc.kml"
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/GDB/TestData.gdb/AOI"
 
 out_folder = f"{root}/nearmap/unit_tests/TestData/scratch"
+out_format = "tif"  # Member of "tif", "jpg", "jp2", "png"
 tertiary = None
 since = None
 until = None
@@ -38,4 +39,4 @@ exclude = None
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
-nearmap.download_ortho(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude)
+nearmap.download_ortho(in_feature, out_folder, out_format, tertiary, since, until, mosaic, include, exclude)

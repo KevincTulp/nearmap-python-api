@@ -178,7 +178,7 @@ def generate_ai_pack(base_url, api_key, df_parcels, out_folder, since=None, unti
         if not column.geometry.is_empty:
             # pull the shapely polygon from the current row of grid df
             poly_obj = df_parcels.loc[row, 'geometry']
-            # define the polygon being used on the current roaw
+            # define the polygon being used on the current row
             current_grid = list(poly_obj.exterior.coords)
             polygon = [item for sublist in current_grid for item in sublist]
             # print('THIS IS A POLYGON REQUEST')
@@ -239,8 +239,7 @@ def get_payload(request_string):
         return None
 
 
-def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, out_folder, tertiary=None,
-                            since=None, until=None, mosaic=None, include=None, exclude=None, res=False, run_cmd=False):
+def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, out_image, res=False, run_cmd=False):
     """
     The function contains simple parameter processing to take in user input for top of grid square and bottom of
     grid square, convert those coordinates into the python gdal binding requests for gdal translate options.
@@ -248,19 +247,10 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
     from pyproj import Proj, transform, Transformer
     from osgeo import gdal
     from pathlib import Path
-    import xml.etree.ElementTree as ET
-
-    def _update_xml_api_key(xml_file, source_string, replace_string):
-        import xml.etree.ElementTree as ET
-        tree = ET.parse(xml_file)
-        root = tree.getroot()
-        for elem in root.iter('Service'):
-            for item in elem.iter('ServerUrl'):
-                item.text = item.text.replace(source_string, replace_string)
-        tree.write(xml_file)
 
     if res is False:
-        resolution = 0.40  # this is a standard low res return
+        resolution = .05  # this is a standard high res return
+        # TODO: fix resolution
         # print(f"resolution is {resolution}")
     else:
         resolution = res
@@ -269,6 +259,7 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
 
     # First Bounding Box Coordinate, TOP LEFT
     transformer = Transformer.from_crs(4326, 3857, always_xy=True)
+
     top_left, bottom_right = transformer.itransform([[top_left_long_lat[0], top_left_long_lat[1]],
                                                      [bottom_right_long_lat[0], bottom_right_long_lat[1]]])
     '''
@@ -294,22 +285,53 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
     top_left = tuple_to_string(top_left_long_lat)
     bottom_right = tuple_to_string(bottom_right_long_lat)
 
-    gdal_string = f'gdal_translate --debug ON -a_srs EPSG:3857 -projwin {top_left}{bottom_right}-projwin_srs "EPSG:4326" -outsize {long_pixel_count} {lat_pixel_count} tile_dl.xml {out_folder}'  # TODO xml is still being used, need to mvoe and chance the file.
+    gdal_string = f'gdal_translate --debug ON -a_srs EPSG:3857 -projwin {top_left}{bottom_right}-projwin_srs "EPSG:4326" -outsize {long_pixel_count} {lat_pixel_count} tile_dl.xml {out_image}'  # TODO xml is still being used, need to mvoe and chance the file.
     '''
     print('THIS IS THE GDAL STRING BELOW ME')
     print(gdal_string)
     '''
 
+    format = None
+    file_extension = Path(out_image).suffix.replace(".", "")
+    if file_extension == "tif":
+        format = "Gtiff"
+    elif file_extension == "jp2":
+        format = "JP2OpenJPEG"
+    elif file_extension == "jpg":
+        format = "JPEG"
+    elif file_extension == "png":
+        format = "PNG"
+    else:
+        print(f"format not detected for {out_image}... currently does not exist in library...")
+        exit()
     # this is the gdal translate binding parameters
-    format = "Gtiff"
     projWin = [top_left_long_lat[0], top_left_long_lat[1], bottom_right_long_lat[0], bottom_right_long_lat[1]]
     projWinSRS = "EPSG:4326"
     outputSRS = "EPSG:3857"
     width = lat_pixel_count
     height = long_pixel_count
-    root_dir = Path(__file__).parent.resolve()
-    src_dataset = f'{root_dir}/tile_dl.xml'
-    dst_dataset = out_folder
+
+    if run_cmd is True and format is not None:
+        gdal.Translate(out_image, gdal_xml, format=format, width=width, height=height, projWin=projWin,
+                       projWinSRS=projWinSRS, outputSRS=outputSRS)
+    if format is None:
+        print(f"Error: Could not detect output format for image: {out_image}")
+    else:
+        # print(gdal_string)
+        pass
+
+
+def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", tertiary=None, since=None, until=None,
+                             mosaic=None, include=None, exclude=None, zoom_level=None):
+
+    """
+   The following function is the main processing function for the ortho imagery request. The function will take in a
+   user requested area and return saved tifs.
+   Note: See __init__.py.ortho_imagery_downloader for full description.
+   :return: tif files for each image tile that covers the requested area, user can decide resolution via parameters.
+      """
+    '''this code generates all static images by hitting the tile api and stitching them together for each grid in the parcel dataframe. uses the command prompt natively, still need to fix for file location selection'''
+    from pathlib import Path
 
     def structure_rest_endpoint(url, tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None):
         if tertiary:
@@ -334,52 +356,65 @@ def static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_l
             url += f"&exclude={exclude}"
         return url
 
+    def _update_xml_api_key(xml_file, source_string, replace_string):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        for elem in root.iter('Service'):
+            for item in elem.iter('ServerUrl'):
+                item.text = item.text.replace(source_string, replace_string)
+        tree.write(xml_file)
+
+    def _update_xml_level(xml_file, zoom_level):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        for elem in root.iter('DataWindow'):
+            for item in elem.iter('TileLevel'):
+                item.text = str(zoom_level)
+        tree.write(xml_file)
+
+    out_format = out_format.strip().replace(".", "").lower()
+
+    root_dir = Path(__file__).parent.resolve()
+    gdal_xml = f'{root_dir}/tile_dl.xml'
     structured_endpoint = structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+    _update_xml_api_key(xml_file=gdal_xml, source_string="{api_key}", replace_string=structured_endpoint)
+    #if not zoom_level:
+    #    zoom_level = 21
+    # _update_xml_level(xml_file=gdal_xml, zoom_level=zoom_level)
 
-    _update_xml_api_key(xml_file=src_dataset, source_string="{api_key}", replace_string=structured_endpoint)
-
-    if run_cmd is True:
-        gdal.Translate(dst_dataset, src_dataset, format=format, width=width, height=height, projWin=projWin,
-                       projWinSRS=projWinSRS, outputSRS=outputSRS)
-    else:
-        # print(gdal_string)
-        pass
-
-    structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
-    _update_xml_api_key(xml_file=src_dataset, source_string=structured_endpoint, replace_string="{api_key}")
-
-
-def ortho_imagery_downloader(base_url, api_key, df_parcels, out_folder, tertiary=None, since=None, until=None,
-                             mosaic=None, include=None, exclude=None):
-
-    """
-   The following function is the main processing function for the ortho imagery request. The function will take in a
-   user requested area and return saved tifs.
-   Note: See __init__.py.ortho_imagery_downloader for full description.
-   :return: tif files for each image tile that covers the requested area, user can decide resolution via parameters.
-      """
-    '''this code generates all static images by hitting the tile api and stitching them together for each grid in the parcel dataframe. uses the command prompt natively, still need to fix for file location selection'''
     fail_list = []
+    num_tiles = df_parcels.shape[0]
+    tile_intervals = []
+    if num_tiles > 20:
+        tile_intervals = [i for i in range(0, num_tiles, int(num_tiles*.05))]
     for row, column in df_parcels.iterrows():
-
-        if column.geometry.is_empty:
-            # print("geometry is empty PASSED")
-            pass
-        else:
+        if not column.geometry.is_empty:
             top_left_long_lat = list(df_parcels.tile[row].exterior.coords[0])
             bottom_right_long_lat = list(df_parcels.tile[row].exterior.coords[2])
 
-            static_image_name = out_folder + f'/ortho_{row}.tif'
+            static_image_name = out_folder + f'/ortho_{row}.{out_format}'
+            #try:
+            static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, static_image_name,
+                                    res=False, run_cmd=True)
+            #except:  # TODO: exception currently not working for error... determine how to return error in exception
+            '''ERROR 1: GDALWMS: Unable to download block 143053, 222760.
+                URL:
+                  HTTP status code: 504, error: (null).
+                Add the HTTP status code to <ZeroBlockHttpCodes> to ignore this error (see http://www.gdal.org/frmt_wms.html).
+                ERROR 1: IReadBlock failed at X offset 143051, Y offset 222758: GDALWMS: Unable to download block 143053, 222760'''
+            #print("Error: Could not retrieve/process tile at this time... will re-attempt later in process")
+            #fail_list.append([row, top_left_long_lat, bottom_right_long_lat, static_image_name])
+            if row in tile_intervals and num_tiles > 20:  # Print Percentage complete in intervals of 5
+                print(f"{tile_intervals.index(row)*5}% Complete")
+    for i in fail_list:  # Process Tiles that did not initially process due to errors...
+        static_image_parameters(gdal_xml, i[1], i[2], i[3], res=False, run_cmd=True)
 
-            try:
-                static_image_parameters(base_url, api_key, top_left_long_lat, bottom_right_long_lat, static_image_name,
-                                        tertiary, since, until, mosaic, include, exclude, res=False, run_cmd=True)
-            except:
-                print("Error: Could not retrieve/process tile at this time... will re-attempt later in process")
-                fail_list.append([row, top_left_long_lat, bottom_right_long_lat, static_image_name])
-    for i in fail_list:
-        static_image_parameters(base_url, api_key, i[1], i[2], i[3], tertiary, since, until, mosaic,
-                                include, exclude, res=False, run_cmd=True)
+    structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
+    _update_xml_api_key(xml_file=gdal_xml, source_string=structured_endpoint, replace_string="{api_key}")
+    #if zoom_level != 21:
+        # _update_xml_level(xml_file=gdal_xml, zoom_level=zoom_level)
     return
 
 

@@ -131,8 +131,8 @@ def _http_response_error_reporting(status):
 ###################
 
 
-def download_ortho(base_url, api_key, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None,
-                   include=None, exclude=None):
+def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None, since=None, until=None, mosaic=None,
+                   include=None, exclude=None, zoom_level=None):
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
     from nearmap._download import ortho_imagery_downloader
 
@@ -140,9 +140,8 @@ def download_ortho(base_url, api_key, polygon, out_folder, tertiary=None, since=
     grid = create_grid(coords)
     slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
     Path(out_folder).mkdir(parents=True, exist_ok=True)
-    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, out_folder, tertiary, since, until, mosaic,
-                                         include, exclude)
-
+    ortho_out = ortho_imagery_downloader(api_key, slippy_grid, out_folder, out_format, tertiary, since, until, mosaic,
+                                         include, exclude, zoom_level)
     return slippy_grid, ortho_out
 
 
@@ -173,8 +172,8 @@ def download_ai(base_url, api_key, polygon, out_folder, since=None, until=None, 
 
 
 def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None,
-                   include=None, exclude=None, packs=None, out_format="json", lat_lon_direction="yx",
-                   surveyResourceID=None):
+                   include=None, exclude=None, packs=None, out_ai_format="json", out_ortho_format="json",
+                   lat_lon_direction="yx", surveyResourceID=None):
 
     from nearmap._download import ortho_imagery_downloader, dsm_imagery_downloader, generate_ai_pack
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid
@@ -187,8 +186,8 @@ def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=
     Path(ortho_out_folder).mkdir(parents=True, exist_ok=True)
     print("Downloading Ortho Imagery")
 
-    ortho_out = ortho_imagery_downloader(base_url, api_key, slippy_grid, ortho_out_folder, tertiary, since, until,
-                                         mosaic, include, exclude)
+    ortho_out = ortho_imagery_downloader(api_key, slippy_grid, ortho_out_folder, out_ortho_format, tertiary, since,
+                                         until, mosaic, include, exclude)
     dsm_out_folder = f"{out_folder}/dsm"
     Path(dsm_out_folder).mkdir(parents=True, exist_ok=True)
     print("Downloading DSM (Digital Surface Model) Data")
@@ -196,7 +195,7 @@ def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=
     ai_out_folder = f"{out_folder}/ai_packs"
     Path(ai_out_folder).mkdir(parents=True, exist_ok=True)
     print("Downloading AP Packs")
-    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, ai_out_folder, since, until, packs, out_format,
+    ai_out = generate_ai_pack(base_url, api_key, slippy_grid, ai_out_folder, since, until, packs, out_ai_format,
                               lat_lon_direction, surveyResourceID)
 
     return slippy_grid, ortho_out, dsm_out, ai_out

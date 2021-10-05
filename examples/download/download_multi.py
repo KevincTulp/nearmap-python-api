@@ -35,9 +35,11 @@ mosaic = None
 include = None
 exclude = None
 packs = None
-out_format = "json"  # Of Type: "json" or "gpkg"
+out_ai_format = "json"  # Of Type: "json" or "gpkg"
+out_ortho_format = "tif"  # Member of "tif", "jpg", "jp2", "png"
 
 # Connect to the Nearmap API for Python
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
-nearmap.download_multi(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude, packs, out_format)
+nearmap.download_multi(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude, packs, out_ai_format,
+                       out_ortho_format)
