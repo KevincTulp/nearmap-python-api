@@ -249,14 +249,12 @@ def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, 
     from osgeo import gdal
     from pathlib import Path
 
-
-    if res is False:
+    if res is None:
         resolution = .05  # this is a standard high res return
         # TODO: fix resolution
         # print(f"resolution is {resolution}")
     else:
         resolution = res
-
 
     # print('Resolution is: ' + str(resolution))
 
@@ -329,7 +327,7 @@ def static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, 
 
 
 def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", tertiary=None, since=None, until=None,
-                             mosaic=None, include=None, exclude=None, zoom_level=None):
+                             mosaic=None, include=None, exclude=None, res=None, zoom_level=None):
 
     """
    The following function is the main processing function for the ortho imagery request. The function will take in a
@@ -404,7 +402,7 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
             static_image_name = out_folder + f'/ortho_{row}.{out_format}'
             #try:
             static_image_parameters(gdal_xml, top_left_long_lat, bottom_right_long_lat, static_image_name,
-                                    res=False, run_cmd=True)
+                                    res=res, run_cmd=True)
             #except:  # TODO: exception currently not working for error... determine how to return error in exception
             '''ERROR 1: GDALWMS: Unable to download block 143053, 222760.
                 URL:
@@ -416,7 +414,7 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
             if row in tile_intervals and num_tiles > 20:  # Print Percentage complete in intervals of 5
                 print(f"{tile_intervals.index(row)*5}% Complete")
     for i in fail_list:  # Process Tiles that did not initially process due to errors...
-        static_image_parameters(gdal_xml, i[1], i[2], i[3], res=False, run_cmd=True)
+        static_image_parameters(gdal_xml, i[1], i[2], i[3], res=res, run_cmd=True)
 
     structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
     _update_xml_api_key(xml_file=gdal_xml, source_string=structured_endpoint, replace_string="{api_key}")

@@ -43,7 +43,7 @@ class NEARMAP(object):
     ###################
 
     def download_ortho(self, polygon, out_folder, out_format="tif", tertiary=None, since=None, until=None, mosaic=None,
-                       include=None, exclude=None, zoom_level=None):
+                       include=None, exclude=None, res=None, zoom_level=None):
         """
                Functions handles the ortho download process using python api wrappers and a grid system which
                will cover the user defined area. Results will be fed back via this grid of roughly 100m x 100m mosiac.
@@ -126,7 +126,7 @@ class NEARMAP(object):
                :return: tif file responses in a mosiac of the area of interest.
                """
         return _api.download_ortho(self.api_key, polygon, out_folder, out_format, tertiary, since, until, mosaic,
-                                   include, exclude, zoom_level)
+                                   include, exclude, res, zoom_level)
 
     def download_dsm(self, polygon, out_folder, since=None, until=None, fields=None):
         """

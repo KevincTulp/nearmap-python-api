@@ -132,7 +132,7 @@ def _http_response_error_reporting(status):
 
 
 def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None, since=None, until=None, mosaic=None,
-                   include=None, exclude=None, zoom_level=None):
+                   include=None, exclude=None, res=None, zoom_level=None):
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
     from nearmap._download import ortho_imagery_downloader
 
@@ -141,7 +141,7 @@ def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None
     slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
     Path(out_folder).mkdir(parents=True, exist_ok=True)
     ortho_out = ortho_imagery_downloader(api_key, slippy_grid, out_folder, out_format, tertiary, since, until, mosaic,
-                                         include, exclude, zoom_level)
+                                         include, exclude, res, zoom_level)
     return slippy_grid, ortho_out
 
 
