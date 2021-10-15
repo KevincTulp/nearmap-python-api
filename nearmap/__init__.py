@@ -550,7 +550,7 @@ class NEARMAP(object):
                            include, exclude, lat_lon_direction)
 
     def pointV2(self, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None, include=None,
-                exclude=None, lat_lon_direction="yx"):
+                exclude=None, lat_lon_direction="yx", output="json"):
         """
         Use this API for querying dates and other attributes for a point. For example, checking if there is Nearmap
         coverage at a geocoded address.
@@ -652,7 +652,7 @@ class NEARMAP(object):
 
         """
         return _api.pointV2(self.base_url, self.api_key, point, since, until, limit, offset, fields, sort, include,
-                            exclude, lat_lon_direction)
+                            exclude, lat_lon_direction, output)
 
     def coordV2(self, z, x, y, since=None, until=None, limit=20, offset=None, fields=None, sort=None, include=None,
                 exclude=None):

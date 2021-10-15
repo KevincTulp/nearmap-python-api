@@ -19,6 +19,7 @@ from tempfile import NamedTemporaryFile
 import csv
 import time
 import os
+from nearmap import NEARMAP
 
 try:
     from ujson import json
@@ -32,27 +33,26 @@ async def fetch(session, url):
         return await response.json()
 
 
-async def worker(name, in_csv, fid_name, lat_name, lon_name, skip_duplicates):
+async def worker(name, url, api_key, in_csv, fid_name, lat_name, lon_name, skip_duplicates, since, until, limit, offset,
+                         fields, sort, include, exclude):
     """ Worker node for the nearmap lat/lon lookup operation """
 
-    # Connect to the Nearmap API for Python
-    api_key = get_api_key()
-
     tempfile = NamedTemporaryFile(mode='w', delete=False)
-    fields = ['ID', fid_name, lat_name, lon_name, 'lat_lon_duplicates', 'fid_duplicates', 'nearmap_coverage']
+    csv_fields = ['ID', fid_name, lat_name, lon_name, 'lat_lon_duplicates', 'fid_duplicates', 'nearmap_coverage']
     num_rows = sum(1 for row in open(in_csv))
-    intervals = list(range(0, num_rows, 1000))
-    count = 0
+    # intervals = list(range(0, num_rows, 1000))
+    # count = 0
     with open(in_csv, 'r') as csvfile, tempfile:
-        reader = csv.DictReader(csvfile, fieldnames=fields)
-        writer = csv.DictWriter(tempfile, fieldnames=fields, lineterminator='\n')
+        reader = csv.DictReader(csvfile, fieldnames=csv_fields)
+        writer = csv.DictWriter(tempfile, fieldnames=csv_fields, lineterminator='\n')
         for row in reader:
             if row[fid_name]:
                 if "False" in [row['lat_lon_duplicates'], row['fid_duplicates']] or not skip_duplicates:
                     try:
-                        url = f"https://api.nearmap.com/coverage/v2/point/{row[lon_name]},{row[lat_name]}?apikey={api_key}"
+                        point = f"{row[lon_name]},{row[lat_name]}"
+                        # url = f"https://api.nearmap.com/coverage/v2/point/{row[lon_name]},{row[lat_name]}?apikey={api_key}"
                         async with aiohttp.ClientSession() as session:
-                            my_json = await asyncio.gather(fetch(session, url))
+                            my_json = await asyncio.gather(fetch(session, eval(url)))
                             surveys = my_json[0]['surveys']
                             if surveys:
                                 row['nearmap_coverage'] = "True"
@@ -60,9 +60,10 @@ async def worker(name, in_csv, fid_name, lat_name, lon_name, skip_duplicates):
                                 row['nearmap_coverage'] = "False"
                     except:
                         row['nearmap_coverage'] = "Error"
-                row = {fields[0]: row[fields[0]], fields[1]: row[fields[1]], fields[2]: row[fields[2]],
-                       fields[3]: row[fields[3]], fields[4]: row[fields[4]], fields[5]: row[fields[5]],
-                       fields[6]: row[fields[6]]}
+                row = {csv_fields[0]: row[csv_fields[0]], csv_fields[1]: row[csv_fields[1]],
+                       csv_fields[2]: row[csv_fields[2]], csv_fields[3]: row[csv_fields[3]],
+                       csv_fields[4]: row[csv_fields[4]], csv_fields[5]: row[csv_fields[5]],
+                       csv_fields[6]: row[csv_fields[6]]}
                 writer.writerow(row)
                 '''
                 if count in intervals:
@@ -75,11 +76,16 @@ async def worker(name, in_csv, fid_name, lat_name, lon_name, skip_duplicates):
     return in_csv
 
 
-async def process_coords(csv_files, fid_name, lat_name, lon_name, skip_duplicates):
+async def process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_duplicates, since, until, limit, offset,
+                         fields, sort, include, exclude):
     """ Asynchronous process for processing whether or not lat/lon coords are within Nearmap Coverage"""
+    # Connect to the Nearmap API for Python
+    nearmap = NEARMAP(api_key)
+    url = nearmap.pointV2([0, 0], since, until, limit, offset, fields, sort, include, exclude, output="url")
     tasks = []
-    for count, df in enumerate(csv_files):
-        tasks.append(worker(f"process_{count}", df, fid_name, lat_name, lon_name, skip_duplicates))
+    for count, file in enumerate(csv_files):
+        tasks.append(worker(f"process_{count}", url, api_key, file, fid_name, lat_name, lon_name, skip_duplicates, since,
+                            until, limit, offset, fields, sort, include, exclude))
     await asyncio.gather(*tasks)
     return csv_files
 
@@ -117,7 +123,8 @@ def check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name):
     return df
 
 
-def main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_duplicates=True):
+def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_duplicates, since, until,
+         limit, offset, fields, sort, include, exclude):
     """ Operation to batch detect whether a given lat/lon falls within Nearmap Coverage """
 
     def _file_exists(in_spreadsheet):
@@ -157,7 +164,8 @@ def main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_dup
     if os.name == 'nt':  # If Windows add event loop policy to resolve asyncio bug
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(process_coords(csv_files, fid_name, lat_name, lon_name, skip_duplicates))
+    loop.run_until_complete(process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_duplicates, since,
+                                           until, limit, offset, fields, sort, include, exclude))
     loop.close()
 
     df = pd.concat(map(pd.read_csv, csv_files), ignore_index=True)
@@ -174,15 +182,31 @@ def main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_dup
 
 if __name__ == "__main__":
 
+    ###############
     # User Inputs
-    in_spreadsheet = r''
-    fid_name = 'fid'
-    lat_name = 'lat'
-    lon_name = 'lon'
-    out_spreadsheet = r''
+    #############
+
+    # Data Processing Specific Parameters
+    in_spreadsheet = r''  # Input spreadsheet for processing in csv or excel(xlsx) format
+    fid_name = 'fid'  # The FeatureID unique identifier header name for locations of interest
+    lat_name = 'lat'  # Latitude header name
+    lon_name = 'lon'  # Longitude header name
+    out_spreadsheet = r''  # Output spreadsheet in .csv or excel(xlsx) format
+
+    # Nearmap API Specific Parameters
+    api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     skip_duplicates = True
+    since = None  # Since Data ex: "2018-08-01"
+    until = None  # Until Date ex: "2021-07-09"
+    limit = 20
+    offset = None
+    fields = None
+    sort = None
+    include = None
+    exclude = None
 
     # Run Script
     start_time = time.time()
-    main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_duplicates)
+    main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_duplicates, since, until, limit,
+         offset, fields, sort, include, exclude)
     print(f"Total Processing Time: {time.time() - start_time}")

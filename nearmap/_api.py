@@ -290,29 +290,62 @@ def polyV2(base_url, api_key, polygon, since=None, until=None, limit=20, offset=
 
 
 def pointV2(base_url, api_key, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
-            include=None, exclude=None, lat_lon_direction="yx"):
+            include=None, exclude=None, lat_lon_direction="yx", output="json"):
     point = _format_polygon(point, lat_lon_direction)
-    url = f"{base_url}coverage/v2/point/{point}"
-    url += f"?apikey={api_key}"
+    if output != "url":
+        url = f"{base_url}coverage/v2/point/{point}"
+        url += f"?apikey={api_key}"
+    else:
+        url = f"{base_url}" + "coverage/v2/point/{point}?apikey={api_key}"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
+        if output != "url":
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
     if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
+        if output != "url":
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
     if limit:
-        url += f"&limit={limit}"
+        if output != "url":
+            url += f"&limit={limit}"
+        else:
+            url += "&limit={limit}"
     if offset:
-        url += f"&offset={offset}"
+        if output != "url":
+            url += f"&offset={offset}"
+        else:
+            "&offset={offset}"
     if fields:
-        url += f"&fields={fields}"
+        if output != "url":
+            url += f"&fields={fields}"
+        else:
+            "&fields={fields}"
     if sort:
-        url += f"&sort={sort}"
+        if output != "url":
+            url += f"&sort={sort}"
+        else:
+            "&sort={sort}"
     if include:
-        url += f"&include={include}"
+        if output != "url":
+            url += f"&include={include}"
+        else:
+            "&include={include}"
     if exclude:
-        url += f"&exclude={exclude}"
-    return get(url).json()
+        if output != "url":
+            url += f"&exclude={exclude}"
+        else:
+            "&exclude={exclude}"
+    if output.lower() == "url":
+        return "f'" + url + "'"
+    elif output.lower() == "json":
+        e = get(url)
+        if e.status_code != 200:
+            print(e)
+        return e.json()
 
 
 def coordV2(base_url, api_key, z, x, y, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
