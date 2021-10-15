@@ -32,7 +32,7 @@ async def fetch(session, url):
         return await response.json()
 
 
-async def worker(name, in_csv, fid_name, lat_name, lon_name):
+async def worker(name, in_csv, fid_name, lat_name, lon_name, skip_duplicates):
     """ Worker node for the nearmap lat/lon lookup operation """
 
     # Connect to the Nearmap API for Python
@@ -48,7 +48,7 @@ async def worker(name, in_csv, fid_name, lat_name, lon_name):
         writer = csv.DictWriter(tempfile, fieldnames=fields, lineterminator='\n')
         for row in reader:
             if row[fid_name]:
-                if "False" in [row['lat_lon_duplicates'], row['fid_duplicates']]:
+                if "False" in [row['lat_lon_duplicates'], row['fid_duplicates']] or not skip_duplicates:
                     try:
                         url = f"https://api.nearmap.com/coverage/v2/point/{row[lon_name]},{row[lat_name]}?apikey={api_key}"
                         async with aiohttp.ClientSession() as session:
@@ -75,16 +75,16 @@ async def worker(name, in_csv, fid_name, lat_name, lon_name):
     return in_csv
 
 
-async def process_coords(csv_files, fid_name, lat_name, lon_name):
+async def process_coords(csv_files, fid_name, lat_name, lon_name, skip_duplicates):
     """ Asynchronous process for processing whether or not lat/lon coords are within Nearmap Coverage"""
     tasks = []
     for count, df in enumerate(csv_files):
-        tasks.append(worker(f"process_{count}", df, fid_name, lat_name, lon_name))
+        tasks.append(worker(f"process_{count}", df, fid_name, lat_name, lon_name, skip_duplicates))
     await asyncio.gather(*tasks)
     return csv_files
 
 
-def check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name, skip_duplicates):
+def check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name):
     """ Process for detecting duplicates in spreadsheet & returning as pandas dataframe """
 
     file_extension = Path(in_spreadsheet).suffix.lower()
@@ -97,19 +97,19 @@ def check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name, skip_duplicat
         df = pd.read_excel(in_spreadsheet, usecols=[fid_name, lat_name, lon_name], skip_blank_lines=True)
 
     lat_lon_duplicates = df.duplicated(subset=[lat_name, lon_name]).rename("lat_lon_duplicates")
-    if not skip_duplicates:
+    try:
         assert True not in lat_lon_duplicates, \
-            f"Error: Input file contains Lat/Lon Duplicates for: {lat_name, lon_name} fields \n" \
-            f"Remove duplicates from file before processing"
-    if True in lat_lon_duplicates:
-        print("Detected duplicates for lat/lon...")
+            f"Error: Input file contains Lat/Lon Duplicates for: {lat_name, lon_name} fields."
+    except AssertionError as e:
+        print(e)
     df = df.merge(lat_lon_duplicates.to_frame(), left_index=True, right_index=True)
     del lat_lon_duplicates
     fid_name_duplicates = df.duplicated(subset=[lat_name, lon_name]).rename("fid_duplicates")
-    if not skip_duplicates:
+    try:
         assert True not in fid_name_duplicates, \
-            f"Error: Input file contains Duplicates for FID Name : {fid_name} field \n" \
-            f"Remove duplicates from file before processing"
+            f"Error: Input file contains Duplicates for FID Name : '{fid_name}' field."
+    except AssertionError as e:
+        print(e)
     if True in fid_name_duplicates:
         print(f"Detected duplicates for FID Name : {fid_name}")
     df = df.merge(fid_name_duplicates.to_frame(), left_index=True, right_index=True)
@@ -131,7 +131,7 @@ def main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_dup
                                                    f"Must be of {supported_extensions}"
 
     # Load spreadsheet to dataframe, and check for duplicates
-    df = check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name, skip_duplicates)
+    df = check_duplicates(in_spreadsheet, fid_name, lat_name, lon_name)
     # Add boolean coverage field
     df["nearmap_coverage"] = ""
 
@@ -157,7 +157,7 @@ def main(in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet, skip_dup
     if os.name == 'nt':  # If Windows add event loop policy to resolve asyncio bug
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(process_coords(csv_files, fid_name, lat_name, lon_name))
+    loop.run_until_complete(process_coords(csv_files, fid_name, lat_name, lon_name, skip_duplicates))
     loop.close()
 
     df = pd.concat(map(pd.read_csv, csv_files), ignore_index=True)
