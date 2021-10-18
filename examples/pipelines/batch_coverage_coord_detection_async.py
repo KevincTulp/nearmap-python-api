@@ -84,8 +84,9 @@ async def process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_
     url = nearmap.pointV2([0, 0], since, until, limit, offset, fields, sort, include, exclude, output="url")
     tasks = []
     for count, file in enumerate(csv_files):
-        tasks.append(worker(f"process_{count}", url, api_key, file, fid_name, lat_name, lon_name, skip_duplicates, since,
-                            until, limit, offset, fields, sort, include, exclude))
+        tasks.append(asyncio.create_task(worker(f"process_{count}", url, api_key, file, fid_name, lat_name, lon_name,
+                                                skip_duplicates, since, until, limit, offset, fields, sort, include,
+                                                exclude)))
     await asyncio.gather(*tasks)
     return csv_files
 
