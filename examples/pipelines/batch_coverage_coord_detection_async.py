@@ -50,10 +50,9 @@ async def worker(name, url, api_key, in_csv, fid_name, lat_name, lon_name, skip_
                 if "False" in [row['lat_lon_duplicates'], row['fid_duplicates']] or not skip_duplicates:
                     try:
                         point = f"{row[lon_name]},{row[lat_name]}"
-                        # url = f"https://api.nearmap.com/coverage/v2/point/{row[lon_name]},{row[lat_name]}?apikey={api_key}"
                         async with aiohttp.ClientSession() as session:
                             my_json = await asyncio.gather(fetch(session, eval(url)))
-                            surveys = my_json[0]['surveys']
+                            surveys = my_json[0].get('surveys')
                             if surveys:
                                 row['nearmap_coverage'] = "True"
                             else:
@@ -81,7 +80,7 @@ async def process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_
     """ Asynchronous process for processing whether or not lat/lon coords are within Nearmap Coverage"""
     # Connect to the Nearmap API for Python
     nearmap = NEARMAP(api_key)
-    url = nearmap.pointV2([0, 0], since, until, limit, offset, fields, sort, include, exclude, output="url")
+    url = nearmap.pointV2([0, 0], since, until, limit, offset, fields, sort, include, exclude, return_url=True)
     tasks = []
     for count, file in enumerate(csv_files):
         tasks.append(asyncio.create_task(worker(f"process_{count}", url, api_key, file, fid_name, lat_name, lon_name,
