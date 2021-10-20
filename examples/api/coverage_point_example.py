@@ -17,7 +17,7 @@ print(f"My API Key Is: {nearmap.api_key}")
 point = [-87.73101994900836, 41.79082699478777]
 since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
-limit = 20
+limit = 50
 offset = None
 fields = None
 sort = None
@@ -33,6 +33,7 @@ point_coverage = nearmap.pointV2(point, since, until, limit, offset, fields, sor
 print(dumps(point_coverage, indent=4, sort_keys=True))
 
 surveys = point_coverage.get("surveys")
+assert len(surveys) > 0, "Error: empty json object returned.. No Surveys Detected"
 
 num_surveys = len(surveys)
 print(f"Total Surveys: {num_surveys}\n")
@@ -54,7 +55,10 @@ print(f"Capture Timezone: {timezone}\n")
 utc_offset = [surveys[i].get('utcOffset') for i in list(range(0, num_surveys))]
 print(f"Capture Timezone: {utc_offset}\n")
 
-pixel_sizes = [surveys[i].get('pixelSize') for i in list(range(0, num_surveys))]
+survey_ids = [surveys[i].get('id') for i in list(range(0, num_surveys))]
+print(f"Survey IDs: {survey_ids}\n")
+
+pixel_sizes = [surveys[i].get('id') for i in list(range(0, num_surveys))]
 print(f"Max Pixel Size: {pixel_sizes}\n")
 
 vert_zoom_levels = [item for sublist in [[v.get('scale') for v in surveys[i].get('resources').get('tiles') if
