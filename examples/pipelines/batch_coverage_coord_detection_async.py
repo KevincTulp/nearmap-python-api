@@ -55,6 +55,7 @@ async def worker(name, url, api_key, in_csv, fid_name, lat_name, lon_name, skip_
                         async with aiohttp.ClientSession() as session:
                             my_json = await asyncio.gather(fetch(session, eval(url)))
                             surveys = my_json[0].get('surveys')
+                            num_surveys = len(surveys)
                             if surveys:
                                 row['nearmap_coverage'] = "True"
                                 row['pixel_size'] = [surveys[i].get('pixelSize') for i in list(range(0, num_surveys))]
