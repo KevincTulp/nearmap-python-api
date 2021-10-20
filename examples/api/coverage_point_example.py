@@ -109,5 +109,3 @@ def ai_classes(in_surveys):
 
 print("AI Classes:")
 [print(i) for i in ai_classes(surveys)]
-
-
