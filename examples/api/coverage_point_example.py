@@ -17,7 +17,7 @@ print(f"My API Key Is: {nearmap.api_key}")
 point = [-87.73101994900836, 41.79082699478777]
 since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
-limit = 20
+limit = 50
 offset = None
 fields = None
 sort = None
@@ -32,3 +32,84 @@ lat_lon_direction = "yx"
 point_coverage = nearmap.pointV2(point, since, until, limit, offset, fields, sort, include, exclude, lat_lon_direction)
 print(dumps(point_coverage, indent=4, sort_keys=True))
 
+surveys = point_coverage.get("surveys")
+assert len(surveys) > 0, "Error: empty json object returned.. No Surveys Detected"
+
+num_surveys = len(surveys)
+print(f"Total Surveys: {num_surveys}\n")
+
+locations = [surveys[i].get('location') for i in list(range(0, num_surveys))]
+locations_formatted = [[i.get('region'), i.get('state'), i.get('country')] for i in locations]
+print(f"Capture Location: {locations_formatted}\n")
+
+capture_dates = [surveys[i].get('captureDate') for i in list(range(0, num_surveys))]
+print(f"Image Capture Dates: {capture_dates}\n")
+
+first_last_photo_capture_time = [[surveys[i].get('firstPhotoTime'), surveys[i].get('lastPhotoTime')]
+                                  for i in list(range(0, num_surveys))]
+print(f"First & Last Photo Capture Time: {first_last_photo_capture_time}\n")
+
+timezone = [surveys[i].get('timezone') for i in list(range(0, num_surveys))]
+print(f"Capture Timezone: {timezone}\n")
+
+utc_offset = [surveys[i].get('utcOffset') for i in list(range(0, num_surveys))]
+print(f"Capture Timezone: {utc_offset}\n")
+
+survey_ids = [surveys[i].get('id') for i in list(range(0, num_surveys))]
+print(f"Survey IDs: {survey_ids}\n")
+
+pixel_sizes = [surveys[i].get('id') for i in list(range(0, num_surveys))]
+print(f"Max Pixel Size: {pixel_sizes}\n")
+
+vert_zoom_levels = [item for sublist in [[v.get('scale') for v in surveys[i].get('resources').get('tiles') if
+                                          v.get('type') == 'Vert'] for i in list(range(0, num_surveys))]
+                    for item in sublist]
+print(f"Vert Ortho Max Zoom Levels: {vert_zoom_levels}\n")
+
+tags = [surveys[i].get('tags') for i in list(range(0, num_surveys))]
+print(f"Tags: {tags}\n")
+
+
+def panorama_max_zoom_levels(in_surveys):
+    panorama_list = list()
+    for survey in in_surveys:
+        try:
+            zoom = [v.get('scale') for v in survey.get('resources').get('tiles') if v.get('type') == 'North']
+            if zoom:
+                panorama_list.extend(zoom)
+            else:
+                panorama_list.append(None)
+        except TypeError:
+            panorama_list.append(None)
+    return panorama_list
+
+
+print(f"Panorama Max Zoom Levels: {panorama_max_zoom_levels(surveys)} \n")
+
+
+def ai_captures(in_surveys):
+    ai_list = list()
+    for survey in in_surveys:
+        try:
+            ai_list.append(len(survey.get('resources').get('aifeatures')[0].get('properties').get('classes')))
+        except TypeError:
+            ai_list.append(None)
+    return ai_list
+
+
+print(f"AI Capture Count: {ai_captures(surveys)}\n")
+
+
+def ai_classes(in_surveys):
+    ai_list = list()
+    for survey in in_surveys:
+        try:
+            ai_list.append([i.get('description') for i in
+                            survey.get('resources').get('aifeatures')[0].get('properties').get('classes')])
+        except TypeError:
+            ai_list.append(None)
+    return ai_list
+
+
+print("AI Classes:")
+[print(i) for i in ai_classes(surveys)]

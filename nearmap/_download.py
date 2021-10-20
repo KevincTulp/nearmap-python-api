@@ -379,6 +379,7 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
                 item.text = str(zoom_level)
         tree.write(xml_file)
 
+    print(out_format)
     out_format = out_format.strip().replace(".", "").lower()
 
     root_dir = Path(__file__).parent.resolve()

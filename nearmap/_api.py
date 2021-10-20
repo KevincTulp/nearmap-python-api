@@ -136,6 +136,7 @@ def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
     from nearmap._download import ortho_imagery_downloader
 
+
     coords = get_coords(in_file=polygon)
     grid = create_grid(coords)
     slippy_grid = grid_to_slippy_grid(in_polygon_coords=coords, in_grid=grid)
@@ -206,21 +207,45 @@ def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=
 
 
 def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None, out_format="json",
-                 lat_lon_direction="yx", surveyResourceID=None):
-    polygon = _format_polygon(polygon, lat_lon_direction)
-    # TODO: determine how to implement surveyResourceID parameter
-    url = f"{base_url}ai/features/v4/features.json?polygon={polygon.replace(' ','')}"
+                 lat_lon_direction="yx", surveyResourceID=None, return_url=False):
+    url = str()
+    if not return_url:
+        polygon = _format_polygon(polygon, lat_lon_direction)
+        # TODO: determine how to implement surveyResourceID parameter
+        url = f"{base_url}ai/features/v4/features.json?polygon={polygon.replace(' ','')}"
+    elif return_url:
+        url = f"{base_url}" + "ai/features/v4/features.json?polygon={polygon}"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
     if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
     if packs:
-        url += f"&packs={packs}"
-    url += f"&apikey={api_key}"
+        if not return_url:
+            url += f"&packs={packs}"
+        else:
+            url += "&packs={packs}"
+    if surveyResourceID:
+        if not return_url:
+            url += f"&surveyResourceId={surveyResourceID}"
+        else:
+            url += "&surveyResourceId={surveyResourceID}"
+    if not return_url:
+        url += f"&apikey={api_key}"
+    else:
+        url += "&apikey={api_key}"
     if out_format == "json":
-        return get(url).json()
+        if not return_url:
+            return get(url).json()
+        elif return_url:
+            return "f'" + url + "'"
     elif out_format in ["pandas", "pd"]:
         import pandas as pd
         return pd.read_json(url)["features"]
@@ -229,29 +254,43 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
         exit()
 
 
-def aiClassesV4(base_url, api_key, out_format="json"):
-    url = f"{base_url}ai/features/v4/classes.json?apikey={api_key}"
+def aiClassesV4(base_url, api_key, out_format="json", return_url=False):
+    url = str()
+    if not return_url:
+        url = f"{base_url}ai/features/v4/classes.json?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "ai/features/v4/classes.json?apikey={api_key}"
     if out_format.lower() in ["pandas", "pd"]:
         import pandas as pd
         return pd.read_json(url)
     elif out_format.lower() == "text":
         return get(url).text
     elif out_format.lower() == "json":
-        return get(url).json()
+        if not return_url:
+            return get(url).json()
+        elif return_url:
+            return "f'" + url + "'"
     else:
         print(f"Error: output format {out_format} not a viable option")
         exit()
 
 
-def aiPacksV4(base_url, api_key, out_format="json"):
-    url = f"{base_url}ai/features/v4/packs.json?apikey={api_key}"
+def aiPacksV4(base_url, api_key, out_format="json", return_url=False):
+    url = str()
+    if not return_url:
+        url = f"{base_url}ai/features/v4/packs.json?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "ai/features/v4/packs.json?apikey={api_key}"
     if out_format.lower() in ["pandas", "pd"]:
         import pandas as pd
         return pd.read_json(url)
     elif out_format.lower() == "text":
         return get(url).text
     elif out_format.lower() == "json":
-        return get(url).json()
+        if not return_url:
+            return get(url).json()
+        elif return_url:
+            return "f'" + url + "'"
     else:
         print(f"Error: output format {out_format} not a viable option")
         exit()
@@ -262,86 +301,123 @@ def aiPacksV4(base_url, api_key, out_format="json"):
 
 
 def polyV2(base_url, api_key, polygon, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
-           overlap=None, include=None, exclude=None, lat_lon_direction="yx"):
-    polygon = _format_polygon(polygon, lat_lon_direction)
-    url = f"{base_url}coverage/v2/poly/{polygon}"
-    url += f"?apikey={api_key}"
-    if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
-    if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
-    if limit:
-        url += f"&limit={limit}"
-    if offset:
-        url += f"&offset={offset}"
-    if fields:
-        url += f"&fields={fields}"
-    if sort:
-        url += f"&sort={sort}"
-    if overlap:
-        url += f"&overlap={overlap}"
-    if include:
-        url += f"&include={include}"
-    if exclude:
-        url += f"&exclude={exclude}"
-    return get(url).json()
-
-
-def pointV2(base_url, api_key, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
-            include=None, exclude=None, lat_lon_direction="yx", output="json"):
-    point = _format_polygon(point, lat_lon_direction)
-    if output != "url":
-        url = f"{base_url}coverage/v2/point/{point}"
+           overlap=None, include=None, exclude=None, lat_lon_direction="yx", return_url=False):
+    url = str()
+    if return_url is False:
+        polygon = _format_polygon(polygon, lat_lon_direction)
+        url = f"{base_url}coverage/v2/poly/{polygon}"
         url += f"?apikey={api_key}"
-    else:
-        url = f"{base_url}" + "coverage/v2/point/{point}?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "coverage/v2/poly/{polygon}?apikey={api_key}"
     if since:
-        if output != "url":
+        if not return_url:
             # TODO: Implement datetime format checker...
             url += f"&since={since}"
         else:
             url += "&since={since}"
     if until:
-        if output != "url":
+        if not return_url:
             # TODO: Implement datetime format checker...
             url += f"&until={until}"
         else:
             url += "&until={until}"
     if limit:
-        if output != "url":
+        if not return_url:
             url += f"&limit={limit}"
         else:
             url += "&limit={limit}"
     if offset:
-        if output != "url":
+        if not return_url:
             url += f"&offset={offset}"
         else:
-            "&offset={offset}"
+            url += "&offset={offset}"
     if fields:
-        if output != "url":
+        if not return_url:
             url += f"&fields={fields}"
         else:
-            "&fields={fields}"
+            url += "&fields={fields}"
     if sort:
-        if output != "url":
+        if not return_url:
             url += f"&sort={sort}"
         else:
-            "&sort={sort}"
+            url += "&sort={sort}"
+    if overlap:
+        if not return_url:
+            url += f"&overlap={overlap}"
+        else:
+            url += "&overlap={overlap}"
     if include:
-        if output != "url":
+        if not return_url:
             url += f"&include={include}"
         else:
-            "&include={include}"
+            url += "&include={include}"
     if exclude:
-        if output != "url":
+        if not return_url:
             url += f"&exclude={exclude}"
         else:
-            "&exclude={exclude}"
-    if output.lower() == "url":
+            url += "&exclude={exclude}"
+    if return_url:
         return "f'" + url + "'"
-    elif output.lower() == "json":
+    elif not return_url:
+        e = get(url)
+        if e.status_code != 200:
+            print(e)
+        return e.json()
+
+
+def pointV2(base_url, api_key, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
+            include=None, exclude=None, lat_lon_direction="yx", return_url=False):
+    url = str()
+    point = _format_polygon(point, lat_lon_direction)
+    if not return_url:
+        url = f"{base_url}coverage/v2/point/{point}?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "coverage/v2/point/{point}?apikey={api_key}"
+    if since:
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
+    if until:
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
+    if limit:
+        if not return_url:
+            url += f"&limit={limit}"
+        else:
+            url += "&limit={limit}"
+    if offset:
+        if not return_url:
+            url += f"&offset={offset}"
+        else:
+            url += "&offset={offset}"
+    if fields:
+        if not return_url:
+            url += f"&fields={fields}"
+        else:
+            url += "&fields={fields}"
+    if sort:
+        if not return_url:
+            url += f"&sort={sort}"
+        else:
+            url += "&sort={sort}"
+    if include:
+        if not return_url:
+            url += f"&include={include}"
+        else:
+            url += "&include={include}"
+    if exclude:
+        if not return_url:
+            url += f"&exclude={exclude}"
+        else:
+            url += "&exclude={exclude}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
         e = get(url)
         if e.status_code != 200:
             print(e)
@@ -349,61 +425,134 @@ def pointV2(base_url, api_key, point, since=None, until=None, limit=20, offset=N
 
 
 def coordV2(base_url, api_key, z, x, y, since=None, until=None, limit=20, offset=None, fields=None, sort=None,
-            include=None, exclude=None):
-    url = f"{base_url}coverage/v2/coord/{z}/{x}/{y}"
-    url += f"?apikey={api_key}"
+            include=None, exclude=None, return_url=False):
+    url = str()
+    if not return_url:
+        url = f"{base_url}coverage/v2/coord/{z}/{x}/{y}?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "coverage/v2/coord/{z}/{x}/{y}?apikey={api_key}"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
     if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
     if limit:
-        url += f"&limit={limit}"
+        if not return_url:
+            url += f"&limit={limit}"
+        else:
+            url += "&limit={limit}"
     if offset:
-        url += f"&offset={offset}"
+        if not return_url:
+            url += f"&offset={offset}"
+        else:
+            url += "&offset={offset}"
     if fields:
-        url += f"&fields={fields}"
+        if not return_url:
+            url += f"&fields={fields}"
+        else:
+            url += "&fields={fields}"
     if sort:
-        url += f"&sort={sort}"
+        if not return_url:
+            url += f"&sort={sort}"
+        else:
+            url += "&sort={sort}"
     if include:
-        url += f"&include={include}"
+        if not return_url:
+            url += f"&include={include}"
+        else:
+            url += "&include={include}"
     if exclude:
-        url += f"&exclude={exclude}"
-    return get(url).json()
+        if not return_url:
+            url += f"&exclude={exclude}"
+        else:
+            url += "&exclude={exclude}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
+        e = get(url)
+        if e.status_code != 200:
+            print(e)
+        return e.json()
 
 
 def surveyV2(base_url, api_key, polygon, fileFormat="geojson", since=None, until=None, limit=20, offset=None,
-             resources=None, overlap=None, include=None, exclude=None, lat_lon_direction="yx"):
-    polygon = _format_polygon(polygon, lat_lon_direction)
-    url = f"{base_url}coverage/v2/surveyresources/boundaries.{fileFormat}"
-    url += f"?polygon={polygon}&apikey={api_key}"
+             resources=None, overlap=None, include=None, exclude=None, lat_lon_direction="yx", return_url=False):
+    url = str()
+    if not return_url:
+        polygon = _format_polygon(polygon, lat_lon_direction)
+        url = f"{base_url}coverage/v2/surveyresources/boundaries.{fileFormat}?polygon={polygon}&apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "coverage/v2/surveyresources/boundaries.{fileFormat}?polygon={polygon}&apikey={api_key}"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
     if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
     if limit:
-        url += f"&limit={limit}"
+        if not return_url:
+            url += f"&limit={limit}"
+        else:
+            url += "&limit={limit}"
     if offset:
-        url += f"&offset={offset}"
+        if not return_url:
+            url += f"&offset={offset}"
+        else:
+            url += "&offset={offset}"
     if resources:
-        url += f"&resources={resources}"
+        if not return_url:
+            url += f"&resources={resources}"
+        else:
+            url += "&resources={resources}"
     if overlap:
-        url += f"&overlap={overlap}"
+        if not return_url:
+            url += f"&overlap={overlap}"
+        else:
+            url += "&overlap={overlap}"
     if include:
-        url += f"&include={include}"
+        if not return_url:
+            url += f"&include={include}"
+        else:
+            url += "&include={include}"
     if exclude:
-        url += f"&exclude={exclude}"
-    return get(url).json()
+        if not return_url:
+            url += f"&exclude={exclude}"
+        else:
+            url += "&exclude={exclude}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
+        return get(url).json()
 
 
-def coverageV2(base_url, api_key, fileFormat="geojson", types=None):
-    url = f"{base_url}coverage/v2/aggregate/boundaries.{fileFormat}?apikey={api_key}"
+def coverageV2(base_url, api_key, fileFormat="geojson", types=None, return_url=False):
+    url = str()
+    if not return_url:
+        url = f"{base_url}coverage/v2/aggregate/boundaries.{fileFormat}?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "coverage/v2/aggregate/boundaries.{fileFormat}?apikey={api_key}"
     if types:
-        url += f"&types={types}"
-    return get(url).json()
+        if not return_url:
+            url += f"&types={types}"
+        else:
+            url += "&types={types}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
+        return get(url).json()
 
 
 ###############################
@@ -411,35 +560,72 @@ def coverageV2(base_url, api_key, fileFormat="geojson", types=None):
 #############################
 
 
-def coverageStaticMapV2(base_url, api_key, point, radius, resources=None, overlap=None, since=None, until=None, fields=None,
-                        limit=100, offset=None, lat_lon_direction="yx"):
-    point = _format_polygon(point, lat_lon_direction)
-    url = f"{base_url}staticmap/v2/coverage.json?point={point}&radius={radius}"
+def coverageStaticMapV2(base_url, api_key, point, radius, resources=None, overlap=None, since=None, until=None,
+                        fields=None, limit=100, offset=None, lat_lon_direction="yx", return_url=False):
+    url = str()
+    if not return_url:
+        point = _format_polygon(point, lat_lon_direction)
+        url = f"{base_url}staticmap/v2/coverage.json?point={point}&radius={radius}"
+    elif return_url:
+        url = f"{base_url}" + "staticmap/v2/coverage.json?point={point}&radius={radius}"
     if overlap:
-        url += f"&overlap={overlap}"
+        if not return_url:
+            url += f"&overlap={overlap}"
+        else:
+            url += "&overlap={overlap}"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
+        else:
+            url += "&since={since}"
     if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
     if resources:
-        url += f"&resources={resources}"
+        if not return_url:
+            url += f"&resources={resources}"
+        else:
+            url += "&resources={resources}"
     if fields:
-        url += f"&fields={fields}"
+        if not return_url:
+            url += f"&fields={fields}"
+        else:
+            url += "&fields={fields}"
     if limit:
-        url += f"&limit={limit}"
+        if not return_url:
+            url += f"&limit={limit}"
+        else:
+            url += "&limit={limit}"
     if offset:
-        url += f"&offset={offset}"
-    url += f"&apikey={api_key}"
-    return get(url).json()
+        if not return_url:
+            url += f"&offset={offset}"
+        else:
+            url += "&offset={offset}"
+    if not return_url:
+        url += f"&apikey={api_key}"
+    else:
+        url += "&apikey={api_key}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
+        return get(url).json()
 
 
-def imageStaticMapV2(base_url, api_key, surveyID, image_type, file_format, point, radius, size, transactionToken, out_image,
-                     lat_lon_direction="yx"):
-    point = _format_polygon(point, lat_lon_direction)
-    url = f"{base_url}staticmap/v2/surveys/{surveyID}/{image_type}.{file_format}"
-    url += f"?point={point}&radius={radius}&size={size}&transactionToken={transactionToken}"
+def imageStaticMapV2(base_url, surveyID, image_type, file_format, point, radius, size, transactionToken, out_image,
+                     lat_lon_direction="yx", return_url=False):
+    url = str()
+    if return_url:
+        url = f"{base_url}" + "staticmap/v2/surveys/{surveyID}/{image_type}.{file_format}?point={point}" \
+                              "&radius={radius}&size={size}&transactionToken={transactionToken}"
+        return "f'" + url + "'"
+    elif not return_url:
+        point = _format_polygon(point, lat_lon_direction)
+        url = f"{base_url}staticmap/v2/surveys/{surveyID}/{image_type}.{file_format}"
+        url += f"?point={point}&radius={radius}&size={size}&transactionToken={transactionToken}"
     if not out_image:
         raise Exception("error: Output Image File Path or Bytes flag undefined.")
     if out_image.lower() == "bytes":
@@ -458,39 +644,67 @@ def imageStaticMapV2(base_url, api_key, surveyID, image_type, file_format, point
 
 
 def tileV3(base_url, api_key, tileResourceType, z, x, y, out_format, out_image, tertiary=None, since=None, until=None,
-           mosaic=None, include=None, exclude=None, rate_limit_mode="slow"):
-    if "." in out_format:
-        out_format.replace(".", "")
-    out_format = out_format.lower().strip()
-    tileResourceType = tileResourceType.lower().capitalize().strip()
-    url = f"{base_url}tiles/v3/{tileResourceType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
+           mosaic=None, include=None, exclude=None, rate_limit_mode="slow", return_url=False):
+    url = str()
+    if not return_url:
+        if "." in out_format:
+            out_format.replace(".", "")
+        out_format = out_format.lower().strip()
+        tileResourceType = tileResourceType.lower().capitalize().strip()
+        url = f"{base_url}tiles/v3/{tileResourceType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
+    elif return_url:
+        url = f"{base_url}" + "tiles/v3/{tileResourceType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
     if tertiary:
         url += "&tertiary=satellite"
     if since:
-        # TODO: Implement datetime format checker...
-        url += f"&since={since}"
-    if until:
-        # TODO: Implement datetime format checker...
-        url += f"&until={until}"
-    if mosaic:
-        mosaic_options = ["latest", "earliest"]
-        if mosaic.lower() in mosaic_options:
-            url += f"&mosaic={mosaic.lower()}"
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&since={since}"
         else:
-            raise Exception(f"error: mosaic input string not a member of {mosaic_options}")
+            url += "&since={since}"
+    if until:
+        if not return_url:
+            # TODO: Implement datetime format checker...
+            url += f"&until={until}"
+        else:
+            url += "&until={until}"
+    if mosaic:
+        if not return_url:
+            mosaic_options = ["latest", "earliest"]
+            if mosaic.lower() in mosaic_options:
+                url += f"&mosaic={mosaic.lower()}"
+            else:
+                raise Exception(f"error: mosaic input string not a member of {mosaic_options}")
+        else:
+            url += "&mosaic={mosaic}"
     if include:
-        # TODO: Assess tag inclusion and auto-formatting json, list, etc into the schema. fun...
-        url += f"&include={include}"
+        if not return_url:
+            # TODO: Assess tag inclusion and auto-formatting json, list, etc into the schema. fun...
+            url += f"&include={include}"
+        else:
+            url += "&include={include}"
     if exclude:
-        # TODO: Assess tag exclusion and auto-formatting json, list, etc into the schema. fun....
-        url += f"&exclude={exclude}"
-    return _get_image(url, out_format, out_image, rate_limit_mode)
+        if not return_url:
+            # TODO: Assess tag exclusion and auto-formatting json, list, etc into the schema. fun....
+            url += f"&exclude={exclude}"
+        else:
+            url += "&exclude={exclude}"
+    if return_url:
+        return "f'" + url + "'"
+    elif not return_url:
+        return _get_image(url, out_format, out_image, rate_limit_mode)
 
 
-def tileSurveyV3(base_url, api_key, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow"):
-    if "." in out_format:
-        out_format.replace(".", "")
-    out_format = out_format.lower().strip()
-    contentType = contentType.lower().capitalize().strip()
-    url = f"{base_url}tiles/v3/surveys/{surveyid}/{contentType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
-    return _get_image(url, out_format, out_image, rate_limit_mode)
+def tileSurveyV3(base_url, api_key, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow",
+                 return_url=False):
+    if return_url:
+        url = f"{base_url}" + "tiles/v3/surveys/{surveyid}/{contentType}/{z}/{x}/{y}.{out_format.lower()}" \
+                              "?apikey={api_key}"
+        return "f'" + url + "'"
+    elif not return_url:
+        if "." in out_format:
+            out_format.replace(".", "")
+        out_format = out_format.lower().strip()
+        contentType = contentType.lower().capitalize().strip()
+        url = f"{base_url}tiles/v3/surveys/{surveyid}/{contentType}/{z}/{x}/{y}.{out_format.lower()}?apikey={api_key}"
+        return _get_image(url, out_format, out_image, rate_limit_mode)

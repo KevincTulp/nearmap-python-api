@@ -53,7 +53,7 @@ nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
 num_passes = 100
 
-file_format = "tif"
+out_format = "tif"
 
 
 def delete_folder_if_exists(in_folder):
@@ -67,8 +67,8 @@ for count, value in enumerate(range(0, num_passes)):
     ping_response = ping_server(nearmap.api_key, "us").headers
     print("start:")
     print(ping_response)
-    nearmap.download_ortho(in_feature, out_folder, tertiary, since, until, mosaic, include, exclude)
-    num_rasters = len(glob1(out_folder, f"*.{file_format}"))
-    print(f"end: Produced {num_rasters} {file_format} Raster Tiles")
+    nearmap.download_ortho(in_feature, out_folder, out_format, tertiary, since, until, mosaic, include, exclude)
+    num_rasters = len(glob1(out_folder, f"*.{out_format}"))
+    print(f"end: Produced {num_rasters} {out_format} Raster Tiles")
     ping_response = ping_server(nearmap.api_key, "us").headers
     print(ping_response)
