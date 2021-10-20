@@ -15,7 +15,7 @@ print(f"My API Key Is: {nearmap.api_key}")
 #################
 
 point = [-87.73101994900836, 41.79082699478777]
-since = "2018-08-01" #None  # Since Data ex: "2018-08-01"
+since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
 limit = 20
 offset = None
