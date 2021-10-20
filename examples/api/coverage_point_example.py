@@ -44,6 +44,16 @@ print(f"Capture Location: {locations_formatted}\n")
 capture_dates = [surveys[i].get('captureDate') for i in list(range(0, num_surveys))]
 print(f"Image Capture Dates: {capture_dates}\n")
 
+first_last_photo_capture_time = [[surveys[i].get('firstPhotoTime'), surveys[i].get('lastPhotoTime')]
+                                  for i in list(range(0, num_surveys))]
+print(f"First & Last Photo Capture Time: {first_last_photo_capture_time}\n")
+
+timezone = [surveys[i].get('timezone') for i in list(range(0, num_surveys))]
+print(f"Capture Timezone: {timezone}\n")
+
+utc_offset = [surveys[i].get('utcOffset') for i in list(range(0, num_surveys))]
+print(f"Capture Timezone: {utc_offset}\n")
+
 pixel_sizes = [surveys[i].get('pixelSize') for i in list(range(0, num_surveys))]
 print(f"Max Pixel Size: {pixel_sizes}\n")
 
@@ -51,6 +61,9 @@ vert_zoom_levels = [item for sublist in [[v.get('scale') for v in surveys[i].get
                                           v.get('type') == 'Vert'] for i in list(range(0, num_surveys))]
                     for item in sublist]
 print(f"Vert Ortho Max Zoom Levels: {vert_zoom_levels}\n")
+
+tags = [surveys[i].get('tags') for i in list(range(0, num_surveys))]
+print(f"Tags: {tags}\n")
 
 
 def panorama_max_zoom_levels(in_surveys):
@@ -80,7 +93,21 @@ def ai_captures(in_surveys):
     return ai_list
 
 
-print(f"AI Capture Count: {ai_captures(surveys)}")
+print(f"AI Capture Count: {ai_captures(surveys)}\n")
 
+
+def ai_classes(in_surveys):
+    ai_list = list()
+    for survey in in_surveys:
+        try:
+            ai_list.append([i.get('description') for i in
+                            survey.get('resources').get('aifeatures')[0].get('properties').get('classes')])
+        except TypeError:
+            ai_list.append(None)
+    return ai_list
+
+
+print("AI Classes:")
+[print(i) for i in ai_classes(surveys)]
 
 
