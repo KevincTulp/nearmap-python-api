@@ -323,7 +323,7 @@ class NEARMAP(object):
     #############
 
     def aiFeaturesV4(self, polygon, since=None, until=None, packs=None, out_format="json", lat_lon_direction="yx",
-                     surveyResourceID=None):
+                     surveyResourceID=None, return_url=False):
         """
         Function retrieves AI Feature tiles for a specified location. Use this API to access vectorized
         features detected using AI with optional date control.
@@ -387,9 +387,9 @@ class NEARMAP(object):
 
         """
         return _api.aiFeaturesV4(self.base_url, self.api_key, polygon, since, until, packs, out_format,
-                                 lat_lon_direction, surveyResourceID)
+                                 lat_lon_direction, surveyResourceID, return_url)
 
-    def aiClassesV4(self, out_format="json"):
+    def aiClassesV4(self, out_format="json", return_url=False):
         """
         The classes.json endpoint is used to retrieve information about all the Feature Classes you have access to with
         your AI Packs. All the features (polygons) returned by the features.json endpoint have both an individual uuid
@@ -412,9 +412,9 @@ class NEARMAP(object):
         :return: json, text, or pandas dataframe object
 
         """
-        return _api.aiClassesV4(self.base_url, self.api_key, out_format)
+        return _api.aiClassesV4(self.base_url, self.api_key, out_format, return_url)
 
-    def aiPacksV4(self, out_format="json"):
+    def aiPacksV4(self, out_format="json", return_url=False):
         """
         The packs.json endpoint is used to show which packs are available on the user's subscription and provides a
         richer and more complex data structure than the more simple classes.json endpoint.
@@ -433,14 +433,14 @@ class NEARMAP(object):
         :return: json, text, or pandas dataframe object
 
         """
-        return _api.aiPacksV4(self.base_url, self.api_key, out_format)
+        return _api.aiPacksV4(self.base_url, self.api_key, out_format, return_url)
 
     #####################
     #  NEARMAP Coverage
     ###################
 
     def polyV2(self, polygon, since=None, until=None, limit=20, offset=None, fields=None, sort=None, overlap=None,
-               include=None, exclude=None, lat_lon_direction="yx"):
+               include=None, exclude=None, lat_lon_direction="yx", return_url=False):
         """
         Use this API for querying dates and other attributes for a small geographic area. For example, in interactive
         web applications.
@@ -547,10 +547,10 @@ class NEARMAP(object):
 
         """
         return _api.polyV2(self.base_url, self.api_key, polygon, since, until, limit, offset, fields, sort, overlap,
-                           include, exclude, lat_lon_direction)
+                           include, exclude, lat_lon_direction, return_url)
 
     def pointV2(self, point, since=None, until=None, limit=20, offset=None, fields=None, sort=None, include=None,
-                exclude=None, lat_lon_direction="yx", output="json"):
+                exclude=None, lat_lon_direction="yx", return_url=False):
         """
         Use this API for querying dates and other attributes for a point. For example, checking if there is Nearmap
         coverage at a geocoded address.
@@ -652,10 +652,10 @@ class NEARMAP(object):
 
         """
         return _api.pointV2(self.base_url, self.api_key, point, since, until, limit, offset, fields, sort, include,
-                            exclude, lat_lon_direction, output)
+                            exclude, lat_lon_direction, return_url)
 
     def coordV2(self, z, x, y, since=None, until=None, limit=20, offset=None, fields=None, sort=None, include=None,
-                exclude=None):
+                exclude=None, return_url=False):
         """
         Use this API for querying dates and other attributes for a Google x/y/z tile coordinate. Provided for legacy
         compatibility reasons. Equivalent to the /`poly` request with the extent of the particular tile.
@@ -762,10 +762,10 @@ class NEARMAP(object):
 
         """
         return _api.coordV2(self.base_url, self.api_key, z, x, y, since, until, limit, offset, fields, sort, include,
-                            exclude)
+                            exclude, return_url)
 
     def surveyV2(self, polygon, fileFormat="geojson", since=None, until=None, limit=20, offset=None, resources=None,
-                 overlap=None, include=None, exclude=None, lat_lon_direction="yx"):
+                 overlap=None, include=None, exclude=None, lat_lon_direction="yx", return_url=False):
         """
         Use this API for downloading coverage polygons to cross reference against your own spatial database.
         For example, to check which of your assets are contained within a particular survey.
@@ -840,9 +840,9 @@ class NEARMAP(object):
 
         """
         return _api.surveyV2(self.base_url, self.api_key, polygon, fileFormat, since, until, limit, offset, resources,
-                             overlap, include, exclude, lat_lon_direction)
+                             overlap, include, exclude, lat_lon_direction, return_url)
 
-    def coverageV2(self, fileFormat="geojson", types=None):
+    def coverageV2(self, fileFormat="geojson", types=None, return_url=False):
         """
         Use this API for visualisation of aggregated Nearmap coverage. For example, to create an interactive map that
         shows where there is Nearmap coverage.
@@ -864,14 +864,14 @@ class NEARMAP(object):
         :return: json
 
         """
-        return _api.coverageV2(self.base_url, self.api_key, fileFormat, types)
+        return _api.coverageV2(self.base_url, self.api_key, fileFormat, types, return_url)
 
     ###############################
     # NEARMAP DSM & TrueOrtho API
     #############################
 
     def coverageStaticMapV2(self, point, radius, resources=None, overlap=None, since=None, until=None, fields=None,
-                            limit=100, offset=None, lat_lon_direction="yx"):
+                            limit=100, offset=None, lat_lon_direction="yx", return_url=False):
         """
         This function provides the details on the available coverage for the requested area. The area is given bounding
         box, defined by a point and a distance from the point. This is separate from the existing Coverage APIs as the
@@ -960,10 +960,10 @@ class NEARMAP(object):
 
         """
         return _api.coverageStaticMapV2(self.base_url, self.api_key, point, radius, resources, overlap, since, until,
-                                        fields, limit, offset, lat_lon_direction)
+                                        fields, limit, offset, lat_lon_direction, return_url)
 
     def imageStaticMapV2(self, surveyID, image_type, file_format, point, radius, size, transactionToken, out_image,
-                         lat_lon_direction="yx"):
+                         lat_lon_direction="yx", return_url=False):
         """
         Function returns raster content based on the location, content type and output format. The same request with
         different content types will return an image of the same area.
@@ -1020,15 +1020,15 @@ class NEARMAP(object):
         :return: out_image or bytes
 
         """
-        return _api.imageStaticMapV2(self.base_url, self.api_key, surveyID, image_type, file_format, point, radius,
-                                     size, transactionToken, out_image, lat_lon_direction)
+        return _api.imageStaticMapV2(self.base_url, surveyID, image_type, file_format, point, radius,
+                                     size, transactionToken, out_image, lat_lon_direction, return_url)
 
     ##################
     #  NEARMAP Tiles
     ################
 
     def tileV3(self, tileResourceType, z, x, y, out_format, out_image, tertiary=None, since=None, until=None,
-               mosaic=None, include=None, exclude=None, rate_limit_mode="slow"):
+               mosaic=None, include=None, exclude=None, rate_limit_mode="slow", return_url=False):
         """
         Function retrieves vertical or panorama tiles for a specified location. Use this API to add a Nearmap basemap
         to your application, with optional date control.
@@ -1133,9 +1133,10 @@ class NEARMAP(object):
 
         """
         return _api.tileV3(self.base_url, self.api_key, tileResourceType, z, x, y, out_format, out_image, tertiary,
-                           since, until, mosaic, include, exclude, rate_limit_mode)
+                           since, until, mosaic, include, exclude, rate_limit_mode, return_url)
 
-    def tileSurveyV3(self, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow"):
+    def tileSurveyV3(self, surveyid, contentType, z, x, y, out_format, out_image, rate_limit_mode="slow",
+                     return_url=False):
         """
         Function retrieves vertical or panorama tiles of a specified survey for a specified location.
         Use this method to retrieve imagery for a single survey
@@ -1185,4 +1186,4 @@ class NEARMAP(object):
 
         """
         return _api.tileSurveyV3(self.base_url, self.api_key, surveyid, contentType, z, x, y, out_format, out_image,
-                                 rate_limit_mode)
+                                 rate_limit_mode, return_url)
