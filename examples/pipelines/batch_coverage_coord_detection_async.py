@@ -237,6 +237,7 @@ def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet,
     elif file_extension == ".xlsx":
         df.to_excel(out_spreadsheet)
     del df
+    rmtree(scratch_folder)
     return out_spreadsheet
 
 
