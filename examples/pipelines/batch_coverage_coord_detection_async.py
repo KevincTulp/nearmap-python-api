@@ -1,10 +1,17 @@
 ####################################
 #   File name: batch_coverage_coord_detection_async.py
-#   About: Process for batch detecting whether coordinate pairs fall within nearmap coverage
+#   About: Process for batch detecting whether coordinate pairs fall within nearmap coverage + obtain statistics
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #   Date created: 10/15/2021
-#   Last update: 10/15/2021
-#   Python Version: 3.6+
+#   Last update: 10/21/2021
+#   Python Version: 3.7+
+#
+# ** Dependencies **
+# Pandas: conda install -c conda-forge requests
+# UJSON: conda install -c conda-forge ujson
+# PSUTIL: conda install -c conda-forge psutil
+# aoiHTTP: conda install -c conda-forge aiohttp
+# Requests: conda install -c conda-forge requests
 ####################################
 
 import pandas as pd
@@ -267,8 +274,8 @@ if __name__ == "__main__":
     #############
 
     # Data Processing Specific Parameters
-    in_spreadsheet = r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
-    fid_name = 'fid'  # The FeatureID unique identifier header name for locations of interest
+    in_spreadsheet = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\farmers\farmers_test_100.csv' #r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
+    fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
     lat_name = 'lat'  # Latitude header name
     lon_name = 'long'  # Longitude header name
     out_spreadsheet = r'Testing_Out.csv'  # Output spreadsheet in .csv or excel(xlsx) format
