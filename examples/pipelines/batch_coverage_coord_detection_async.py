@@ -267,7 +267,7 @@ if __name__ == "__main__":
     #############
 
     # Data Processing Specific Parameters
-    in_spreadsheet = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\farmers\farmers_test_100.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
+    in_spreadsheet = r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
     fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
     lat_name = 'lat'  # Latitude header name
     lon_name = 'long'  # Longitude header name
