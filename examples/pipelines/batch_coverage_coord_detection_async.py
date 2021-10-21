@@ -55,46 +55,66 @@ async def worker(name, url, api_key, in_csv, fid_name, lat_name, lon_name, skip_
                         async with aiohttp.ClientSession() as session:
                             my_json = await asyncio.gather(fetch(session, eval(url)))
                             surveys = my_json[0].get('surveys')
-                            num_surveys = len(surveys)
                             if surveys:
+
+                                num_surveys = len(surveys)
+
                                 row['nearmap_coverage'] = "True"
-                                row['pixel_size'] = [surveys[i].get('pixelSize') for i in list(range(0, num_surveys))]
-                                row['capture_dates'] = [surveys[i].get('captureDate') for i in
-                                                        list(range(0, num_surveys))]
-                                row['region'] = list(set([surveys[i].get('location').get('region') for i in
-                                                          list(range(0, num_surveys))]))
-                                row['state'] = list(
-                                    set([surveys[i].get('location').get('state') for i in list(range(0, num_surveys))]))
+
+                                row['pixel_size'] = str([surveys[i].get(
+                                    'pixelSize') for i in list(range(0, num_surveys))]).replace("[", "").replace(
+                                    "]", "").replace("'", "")
+
+                                capture_dates = [surveys[i].get('captureDate') for i in list(range(0, num_surveys))]
+                                row['capture_dates'] = str(capture_dates).replace("'", "").replace(
+                                    "[", "").replace("]", "")
+
+                                locations = [surveys[i].get('location') for i in list(range(0, num_surveys))]
+
+                                country = str(set([i.get(
+                                    'country') for i in locations])).replace("{", "").replace("}", "").replace("'", "")
+                                row['country'] = country
+
+                                region = str(set([i.get(
+                                    'region') for i in locations])).replace("{", "").replace("}", "").replace("'", "")
+                                row['region'] = region
+
+                                state = str(set([i.get(
+                                    'state') for i in locations])).replace("{", "").replace("}", "").replace("'", "")
+                                row['state'] = state
 
                                 # TODO convert to list comprehension
                                 camera_system_list = []
                                 for i in list(range(0, num_surveys)):
-                                    if 'photos' in surveys[i]['resources']:
+                                    if 'photos' in surveys[i].get('resources'):
                                         camera_system_list.append('HC2')
                                     else:
                                         camera_system_list.append('HC1')
-                                row['capture_type'] = camera_system_list
+                                row['capture_type'] = str(camera_system_list).replace(
+                                    "[", "").replace("]", "").replace("'", "")
 
                                 # TODO convert to list comprehension
                                 AI_coverage_list_for_appending = []
                                 AI_capture_date_list = []
                                 if surveys:
                                     for i in list(range(0, num_surveys)):
-                                        if 'predictionRasters' in surveys[i]['resources'].keys():
-                                            AI_capture_date_list.append(surveys[i]['captureDate'])
+                                        if 'predictionRasters' in surveys[i].get('resources').keys():
+                                            AI_capture_date_list.append(surveys[i].get('captureDate'))
                                         else:
                                             pass
-                                    AI_coverage_list_for_appending.append(AI_capture_date_list)
+                                    AI_coverage_list_for_appending.extend(AI_capture_date_list)
                                 else:
-                                    AI_coverage_list_for_appending.append(AI_capture_date_list)
+                                    AI_coverage_list_for_appending.extend(AI_capture_date_list)
                                     AI_capture_date_list = []
-                                row['AI_capture_dates'] = AI_coverage_list_for_appending
+
+                                row['AI_capture_dates'] = str(AI_coverage_list_for_appending).replace(
+                                    "[", "").replace("]", "").replace("'", "")
 
                                 # additional summation and processing of previously parsed json data.
-                                row['number_of_AI_captures'] = len(row['AI_capture_dates'][0])
-                                row['total_imagery_captures'] = len(row['capture_dates'])
-                                row['most_recent_capture'] = max(row['capture_dates'])
-                                row['date_of_first_capture'] = min(row['capture_dates'])
+                                row['number_of_AI_captures'] = len(AI_coverage_list_for_appending)
+                                row['total_imagery_captures'] = len(capture_dates)
+                                row['most_recent_capture'] = max(capture_dates)
+                                row['date_of_first_capture'] = min(capture_dates)
                             else:
                                 row['nearmap_coverage'] = "False"
                     except:
@@ -237,6 +257,7 @@ def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet,
     elif file_extension == ".xlsx":
         df.to_excel(out_spreadsheet)
     del df
+    rmtree(scratch_folder)
     return out_spreadsheet
 
 
@@ -246,10 +267,10 @@ if __name__ == "__main__":
     #############
 
     # Data Processing Specific Parameters
-    in_spreadsheet = r'C:\Users\connor.tluck\Desktop\My Mac (a104120-mbp)\Client_Samples\HM\HM Lat Long Short.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
-    fid_name = 'FID'  # The FeatureID unique identifier header name for locations of interest
-    lat_name = 'GEO FROM LATITUDE'  # Latitude header name
-    lon_name = 'GEO FROM LONGITUDE'  # Longitude header name
+    in_spreadsheet = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\farmers\farmers_test_100.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
+    fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
+    lat_name = 'lat'  # Latitude header name
+    lon_name = 'long'  # Longitude header name
     out_spreadsheet = r'Testing_Out.csv'  # Output spreadsheet in .csv or excel(xlsx) format
 
     # Nearmap API Specific Parameters
