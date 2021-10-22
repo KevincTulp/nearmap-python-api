@@ -34,6 +34,19 @@ except:
     import json
 
 
+def get_or_create_eventloop():
+    """ asyncio bug workaround per
+    https://techoverflow.net/2020/10/01/how-to-fix-python-asyncio-runtimeerror-there-is-no-current-event-loop-in-thread/
+    """
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError as ex:
+        if "There is no current event loop in thread" in str(ex):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return asyncio.get_event_loop()
+
+
 async def fetch(session, url):
     """ Operation for fetching the json response """
     async with session.get(url) as response:
@@ -250,7 +263,8 @@ def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet,
     # Pass csv_files into asyncio process
     if os.name == 'nt':  # If Windows add event loop policy to resolve asyncio bug
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    loop = asyncio.get_event_loop()
+    # loop = asyncio.get_event_loop()
+    loop = get_or_create_eventloop()  # Fix for asyncio bug
     loop.run_until_complete(process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_duplicates, since,
                                            until, limit, offset, fields, sort, include, exclude))
     loop.close()
@@ -278,7 +292,7 @@ if __name__ == "__main__":
     fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
     lat_name = 'lat'  # Latitude header name
     lon_name = 'long'  # Longitude header name
-    out_spreadsheet = r'Testing_Out.csv'  # Output spreadsheet in .csv or excel(xlsx) format
+    out_spreadsheet = r'Testing_Out1.csv'  # Output spreadsheet in .csv or excel(xlsx) format
 
     # Nearmap API Specific Parameters
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
