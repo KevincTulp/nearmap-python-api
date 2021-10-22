@@ -246,9 +246,12 @@ def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet,
     num_features = df.shape[0]
     if num_features < num_splits:
         num_splits = 1
-    split_list = list(range(0, num_features, floor(num_features / num_splits)))[:-1] + [num_features]
-    splits = [(split_list[i], split_list[i + 1]) for i, _ in enumerate(split_list[:-1])]
-    dataframes = [df.iloc[i[0]:i[1]] for i in splits]
+    if num_splits > 1:
+        split_list = list(range(0, num_features, floor(num_features / num_splits)))[:-1] + [num_features]
+        splits = [(split_list[i], split_list[i + 1]) for i, _ in enumerate(split_list[:-1])]
+        dataframes = [df.iloc[i[0]:i[1]] for i in splits]
+    else:
+        dataframes = [df]
     scratch_folder = r'scratch_folder'
     p = Path(scratch_folder)
     if p.exists():
@@ -263,12 +266,15 @@ def main(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_spreadsheet,
     # Pass csv_files into asyncio process
     if os.name == 'nt':  # If Windows add event loop policy to resolve asyncio bug
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.run(process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_duplicates, since, until,
+                               limit, offset, fields, sort, include, exclude))
+    '''
     # loop = asyncio.get_event_loop()
     loop = get_or_create_eventloop()  # Fix for asyncio bug
     loop.run_until_complete(process_coords(api_key, csv_files, fid_name, lat_name, lon_name, skip_duplicates, since,
                                            until, limit, offset, fields, sort, include, exclude))
     loop.close()
-
+    '''
     df = pd.concat(map(pd.read_csv, csv_files), ignore_index=True)
 
     # Save Dataframe to Spreadsheet
@@ -288,11 +294,11 @@ if __name__ == "__main__":
     #############
 
     # Data Processing Specific Parameters
-    in_spreadsheet = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\farmers\farmers_test_100.csv' #r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
+    in_spreadsheet = r'input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
     fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
     lat_name = 'lat'  # Latitude header name
     lon_name = 'long'  # Longitude header name
-    out_spreadsheet = r'Testing_Out1.csv'  # Output spreadsheet in .csv or excel(xlsx) format
+    out_spreadsheet = r'results.csv'  # Output spreadsheet in .csv or excel(xlsx) format
 
     # Nearmap API Specific Parameters
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
