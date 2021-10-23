@@ -1,0 +1,48 @@
+name: nearmap-py3
+
+channels:
+  - open3d-admin      # For Open3D Library
+  - conda-forge
+  - anaconda
+  - defaults
+
+dependencies:
+  - conda-forge::pip               # Package Installer for Python <-- Required for keplergl
+  - conda-forge::ujson             # UltraJSON, ultra fast JSON encoder and decoder
+  - conda-forge::nest-asyncio      # Patch asyncio to allow nested event loops
+  - conda-forge::aiohttp           # Asynchronous HTTP Client/Server for asyncio and Python
+  - conda-forge::aiofiles          # Asynchronous file operations
+  - conda-forge::tk                # Graphical Interface toolkit for Python
+  - conda-forge::tqdm              # Progress Bars for Python
+  - conda-forge::psutil            # Cross-platform lib for process and system monitoring in Python
+  - conda-forge::matplotlib        # Comprehensive library for creating static, animated, and interactive visualizations in Python
+  - conda-forge::scipy             # Python-based ecosystem of open-source software for mathematics, science, and engineering
+  - conda-forge::dask              # Flexible library for parallel computing in Python
+  - conda-forge::numpy             # Fundamental package for scientific computing with Python
+  - conda-forge::pandas            # Fast, powerful, flexible and easy to use open source data analysis and manipulation tool
+  - conda-forge::scikit-learn      # Machine Learning in Python
+  - conda-forge::jupyterlab        # for running example notebook
+  - conda-forge::pillow            # Python Imaging Library
+  - conda-forge::gdal              # Geospatial Data Abstraction Library
+  - conda-forge::rasterio          # Simplifieed GDAL library for Python
+  - conda-forge::shapely           # Python package for manipulation and analysis of planar geometric objects
+  - conda-forge::fiona             # OGR's Neat and Nimble API for Python programmers (Think Ogre Shrek "Fiona".. lol)
+  - conda-forge::pyproj            # Python interface to PROJ (cartographic projections and coordinate transformations library)
+  - conda-forge::rtree             # R-Tree spatial index for Python GIS
+  - conda-forge::geopandas         # Geospatial Pandas Library
+  - conda-forge::psycopg2          # For connecting to PostGIS
+  - conda-forge::geoalchemy2       # For writing to PostGIS
+  - conda-forge::pdal              # PDAL Library (Point Data Abstraction Library)
+  - conda-forge::python-pdal       # Python bindings for PDAL (Point Data Abstraction Library)
+  - conda-forge::entwine           # data organization library for massive point clouds
+  - conda-forge::mamba             # Fast Cross-Platform Package Manager <-- Dependency for leafmap
+  - conda-forge::leafmap           # A Python package for geospatial analysis and interactive mapping in a Jupyter environment
+  - conda-forge::xarray_leaflet    # xarray & Leaflet fragments of data, xarray through Dask's chunks, and Leaflet through map tiles
+  - conda-forge::ipyleaflet        # Leaflet library for Jupyter Notebooks
+  - open3d-admin:open3d            # open-source library that supports rapid development of software that deals with 3D data
+  - conda-forge::pytest            # for running tests
+  - conda-forge::nodejs            # leafmap dependency & ArcGIS API for Python Dependency <-- If Esri ever supports python 3.8+
+  - conda-forge::qgis              # Python bindings
+  - python>=3.8       # libraries require python 3.8 or more recent releases.
+  - pip:
+      - keplergl      # Dependency for leafmap
