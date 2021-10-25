@@ -3,7 +3,7 @@ Nearmap API for Python: Beta 0.1.0 release.
 
 Initial Instructions:
 
-1.) Install the ["Standard Dependencies"](./install/readme.md) or ["Standard + Advanced Analytics Libraries"](./install/advanced_analytics/readme.md) using conda
+1.) Install the ["Standard Dependencies"](./install/README.md) or ["Standard + Advanced Analytics Libraries"](./install/advanced_analytics/README.md) using conda
 
 2.) Implement code in your script or jupyter notebook.. Ensure scripts and notebooks are placed within the nearmap-api-python directory.
 
