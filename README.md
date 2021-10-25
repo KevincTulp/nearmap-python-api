@@ -1,5 +1,5 @@
 # nearmap
-Nearmap API for Python: Beta 1.0.0 release.
+Nearmap API for Python: Beta 0.1.0 release.
 
 PIP and Conda deployments planned for future beta release stage
 
