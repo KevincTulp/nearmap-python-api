@@ -10,7 +10,7 @@ To install:
     
 - **Note: Unlike Linux & macOS, Windows Conda should not be called from the default windows command prompt**
 
-3.) Map to the install directory: ```cd``` "nearmap-python-api/install"
+3.) Map to the install directory: ```cd``` "nearmap-python-api/install/advanced_analytics"
 
 4.) Run: ```make env```
 
