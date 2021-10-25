@@ -12,6 +12,9 @@ dependencies:
   - conda-forge::nest-asyncio      # Patch asyncio to allow nested event loops
   - conda-forge::aiohttp           # Asynchronous HTTP Client/Server for asyncio and Python
   - conda-forge::aiofiles          # Asynchronous file operations
+  - conda-forge::celery            # Distributed Task Queue
+  - conda-forge::redis-py          # Python client for Redis key-value store
+  - conda-forge::pymongo           # Python driver for MongoDB
   - conda-forge::tk                # Graphical Interface toolkit for Python
   - conda-forge::tqdm              # Progress Bars for Python
   - conda-forge::psutil            # Cross-platform lib for process and system monitoring in Python
