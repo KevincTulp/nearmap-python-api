@@ -1,16 +1,19 @@
-# nearmap-python-api-advanced-analytics
+# nearmap-p3-advanced-analytics
 
-Nearmap API for Python: Beta v1.0.0 release
+Advanced Analytics Libraries Installer
 
 To install:
 
-1.) Map to: ```cd``` nearmap-python-api/install/advanced_analytics directory
+1.) Ensure you have Conda or Miniconda installed from https://www.anaconda.com/
 
-3.) Run: ```make env```
+2.) Open the Conda Command Prompt. More info: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html#starting-conda 
+    
+- **Note: Unlike Linux & macOS, Windows Conda should not be called from the default windows command prompt**
 
-4.) Activate the conda environment ```conda activate nearmap-py3```
+3.) Map to the install directory: ```cd``` "nearmap-python-api/install"
 
-This will deploy a new conda environment from scritps at the root + install directory of the project with all necessary analytics package dependencies.
+4.) Run: ```make env```
 
-Refer to the following page for usage instructions:
-https://github.com/geoffrt/nearmap-python-api/blob/master/nearmap/README.md
+5.) Activate the conda environment ```conda activate nearmap-py3-advanced```
+
+This will deploy a new conda environment from scripts at the root + install directory of the project with all necessary analytics package dependencies.

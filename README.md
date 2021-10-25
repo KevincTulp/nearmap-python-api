@@ -1,18 +1,16 @@
 # nearmap
 Nearmap API for Python: Beta 0.1.0 release.
 
-PIP and Conda deployments planned for future beta release stage
-
 Initial Instructions:
 
-1.) Download nearmap folder and place it adjacent to your python project or jupyter notebook.
+1.) Install the ["Standard Dependencies"](./install/readme.md) or ["Standard + Advanced Analytics Libraries"](./install/advanced_analytics/readme.md) using conda
 
-2.) Implement code in your script or jupyter notebook
+2.) Implement code in your script or jupyter notebook.. Ensure scripts and notebooks are placed within the nearmap-api-python directory.
 
-3.) Access example implementation scripts for all API operations in the ["examples folder"](https://github.com/nearmap/nearmap-python-api/tree/master/examples)
+3.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
 
-
-_** The current release of the Nearmap API for Python only supports synchronous API calls. Asynchronous API calls and more advanced data download operations are slated for later release**_
+_** The current release of the Nearmap API for Python mainly supports synchronous API calls/operations. 
+Asynchronous API calls and more advanced data download operations are continuously being added**_
 
 Example Usage:
 
