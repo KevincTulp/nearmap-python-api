@@ -27,7 +27,7 @@ SETLOCAL
 SET PROJECT_DIR=%cd%
 SET PROJECT_NAME=nearmap
 SET SUPPORT_LIBRARY=nearmap
-SET ENV_NAME=nearmap-py3
+SET ENV_NAME=nearmap-py3-advanced
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: COMMANDS                                                                     :
@@ -44,7 +44,7 @@ GOTO %1
         CALL conda env create -f environment.yml
 
         :: Install the local package in development mode
-        CALL python -m pip install -e ./../
+        CALL python -m pip install -e ./../../
 
     )
     EXIT /B
