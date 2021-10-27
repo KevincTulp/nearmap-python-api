@@ -14,6 +14,6 @@ To install:
 
 4.) Run: ```make env```
 
-5.) Activate the conda environment ```conda activate nearmap-py3-advanced-analytics```
+5.) Activate the conda environment ```conda activate nearmap-py3-advanced```
 
 This will deploy a new conda environment from scripts at the root + install directory of the project with all necessary analytics package dependencies.
