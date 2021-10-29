@@ -18,6 +18,7 @@ dependencies:
   - conda-forge::matplotlib        # Comprehensive library for creating static, animated, and interactive visualizations in Python
   - conda-forge::numpy             # Fundamental package for scientific computing with Python
   - conda-forge::pandas            # Fast, powerful, flexible and easy to use open source data analysis and manipulation tool
+  - conda-forge::openpyxl          # A Python library to read/write Excel 2010 xlsx/xlsm files
   - conda-forge::scikit-learn      # Machine Learning in Python
   - conda-forge::jupyterlab        # for running example notebook
   - conda-forge::pillow            # Python Imaging Library
