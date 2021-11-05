@@ -94,4 +94,4 @@ if __name__ == "__main__":
     exclude = None
 
     batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry_name, out_folder, image_format,
-                         tertiary, since, until, mosaic, include, exclude, threads=4)
+                         tertiary, since, until, mosaic, include, exclude, threads=10)
