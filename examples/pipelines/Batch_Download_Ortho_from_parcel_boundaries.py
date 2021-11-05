@@ -7,13 +7,22 @@ from glob import glob
 from shutil import rmtree
 from os.path import basename, dirname
 from os import rename
+import concurrent.futures
 
 
 def batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry_name, out_folder, image_format="jpg",
                          tertiary=None, since=None, until=None, mosaic=None, include=None,
-                         exclude=None, res=None):
+                         exclude=None, res=None, threads=10):
 
-
+    def _batch_download_ortho(fid_name, fid, unique_id_name, unique_id, polygon):
+        try:
+            out_file_basename = f"{out_folder}/{fid}_{unique_id}_"
+            nearmap.download_ortho(polygon, out_file_basename, image_format, tertiary, since, until, mosaic,
+                                   include, exclude, res)
+            _restructure_data(out_file_basename, out_folder)
+            return {fid_name: fid, unique_id_name: unique_id, 'result': 'Success'}
+        except:
+            return {fid_name: fid, unique_id_name: unique_id, 'result': 'Fail'}
 
     def _restructure_data(in_folder, out_folder):
         files = glob(f'{in_folder}/*')
@@ -44,26 +53,19 @@ def batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry
         rmtree(p)
     p.mkdir(parents=True, exist_ok=False)
 
-    #df['download_status'] = ""
-    for index, row in gdf.iterrows():
-        print(f"processing {row[fid_name], row[unique_id_name]}")
-        try:
+    jobs = []
+    with concurrent.futures.ThreadPoolExecutor(threads) as executor:
+        for index, row in gdf.iterrows():
             polygon = list(row.get(geometry_name).exterior.coords)
-            #polygon_formatted = [item for sublist in polygon for item in sublist]
-            #print(polygon_formatted)
-            out_file_basename = f"{out_folder}/{row[fid_name]}_{row[unique_id_name]}_"
-            nearmap.download_ortho(polygon, out_file_basename, image_format, tertiary, since, until, mosaic,
-                                   include, exclude, res)
-            _restructure_data(out_file_basename, out_folder)
-            #df.loc[index, ["download_status"]] = "Success"
-
-        except ModuleNotFoundError as e:
-            print(e)
-            exit()
-        except:
-            print(f"No Surveys Detected for {row[fid_name], row[unique_id_name]}'")
-            #df.loc[index, ["download_status"]] = "Fail"
-    #df.to_csv(f"{out_folder}\\results.csv")
+            jobs.append(executor.submit(_batch_download_ortho, fid_name, row[fid_name], unique_id_name,
+                                        row[unique_id_name], polygon))
+    results = []
+    for job in jobs:
+        results.append(job.result())
+    print(results)
+    df = pd.DataFrame(results, columns=[fid_name, unique_id_name, 'result'])
+    df.to_csv(f"{out_folder}\\results.csv")
+    return
 
 
 if __name__ == "__main__":
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     geometry_name = 'geometry'  # Name for the geometry in geopandas
 
     out_folder = r'output_folder_for_storing_imagery'
-    image_format = "jpg" # Member of "tif", "jpg", "jp2", "png", "cog"
+    image_format = "jpg"  # Member of "tif", "jpg", "jp2", "png", "cog"
     tertiary = None
     since = None
     until = None
@@ -91,4 +93,5 @@ if __name__ == "__main__":
     include = None
     exclude = None
 
-    batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry_name, out_folder, image_format, tertiary, since, until, mosaic, include, exclude)
+    batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry_name, out_folder, image_format,
+                         tertiary, since, until, mosaic, include, exclude, threads=4)

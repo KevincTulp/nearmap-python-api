@@ -64,7 +64,6 @@ def threaded_batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, l
     p.mkdir(parents=True, exist_ok=False)
 
     jobs = []
-    print(threads)
     with concurrent.futures.ThreadPoolExecutor(threads) as executor:
         for index, row in df.iterrows():
             jobs.append(executor.submit(_batch_download_ortho, fid_name, row[fid_name], row[lon_name], row[lat_name],

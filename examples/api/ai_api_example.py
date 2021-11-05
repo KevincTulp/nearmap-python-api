@@ -10,6 +10,7 @@ except ModuleNotFoundError:
 nearmap = NEARMAP(get_api_key())
 print(f"My API Key Is: {nearmap.api_key}")
 
+
 ###################
 # User Parameters
 #################
@@ -29,6 +30,7 @@ packs = None  # Set to None for all packs otherwise type pack of interest name(s
 # Script
 ########
 
+'''
 # query available ai packs
 my_packs = nearmap.aiPacksV4()
 print(dumps(my_packs, indent=4, sort_keys=True))
@@ -41,6 +43,7 @@ print(dumps(my_classes, indent=4, sort_keys=True))
 # Get AI Features as Pandas Dataframe
 df = nearmap.aiFeaturesV4(polygon, since=None, until=None, packs=None, out_format="pandas", lat_lon_direction="yx")
 print(df)
+'''
 
 # Get AI Features as JSON
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format="json", lat_lon_direction="yx")
@@ -49,4 +52,3 @@ print(dumps(my_ai_features, indent=4, sort_keys=True))
 # Save AI features to JSON File
 with open('my_data.json', 'w', encoding='utf-8') as f:
     dump(my_ai_features, f, ensure_ascii=False, indent=4)
-
