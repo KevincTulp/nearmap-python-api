@@ -15,12 +15,11 @@ root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
 # KMZ Test Data
 ###############
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KMZ/AOI.kmz"
-in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/KML/doc.kml"
 
 ################
 # SHP Test Data
 ###############
-# in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/SHP/AOI.shp"
+in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/SHP/AOI.shp"
 
 ################
 # GDB Test Data

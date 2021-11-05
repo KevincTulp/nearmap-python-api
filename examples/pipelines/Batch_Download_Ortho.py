@@ -6,11 +6,24 @@ from glob import glob
 from shutil import rmtree
 from os.path import basename, dirname
 from os import rename
+import concurrent.futures
 
 
-def batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_folder, distance,
-                         image_format="jpg", tertiary=None, since=None, until=None, mosaic=None, include=None,
-                         exclude=None, res=None):
+def threaded_batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_folder, distance,
+                                  image_format="jpg", tertiary=None, since=None, until=None, mosaic=None, include=None,
+                                  exclude=None, res=None, threads=4):
+
+    def _batch_download_ortho(fid_name, fid, longitude, latitude, distance):
+        try:
+            polygon = _point_to_square_polygon(in_coords=[longitude, latitude], segment_length=distance * 2)
+            out_file_basename = f"{out_folder}/ortho_{fid}_"
+            nearmap.download_ortho(polygon, out_file_basename, image_format, tertiary, since, until, mosaic,
+                                   include, exclude, res)
+            _restructure_data(out_file_basename, out_folder)
+            return {fid_name: fid, 'result': 'Success'}
+        except:
+            return {fid_name: fid, 'result': 'Fail'}
+
 
     def _point_to_square_polygon(in_coords, segment_length):
         length = segment_length
@@ -50,25 +63,19 @@ def batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, lon_name, 
         rmtree(p)
     p.mkdir(parents=True, exist_ok=False)
 
-    df['download_status'] = ""
-    for index, row in df.iterrows():
-        print(row[fid_name], row[lat_name], row[lon_name])
-        try:
-            polygon = _point_to_square_polygon(in_coords=[row[lon_name], row[lat_name]], segment_length=distance * 2)
-            print(polygon)
-            out_file_basename = f"{out_folder}/f_{row[fid_name]}_"
-            nearmap.download_ortho(polygon, out_file_basename, image_format, tertiary, since, until, mosaic,
-                                   include, exclude, res)
-            _restructure_data(out_file_basename, out_folder)
-            df.loc[index, ["download_status"]] = "Success"
-        except ModuleNotFoundError as e:
-            print(e)
-            exit()
-        except:
-            print(f"No Surveys Detected for {row['pol']}'")
-            df.loc[index, ["download_status"]] = "Fail"
-
+    jobs = []
+    print(threads)
+    with concurrent.futures.ThreadPoolExecutor(threads) as executor:
+        for index, row in df.iterrows():
+            jobs.append(executor.submit(_batch_download_ortho, fid_name, row[fid_name], row[lon_name], row[lat_name],
+                                        distance))
+    results = []
+    for job in jobs:
+        results.append(job.result())
+    print(results)
+    df = pd.DataFrame(results, columns=[fid_name, 'result'])
     df.to_csv(f"{out_folder}\\results.csv")
+    return
 
 
 if __name__ == "__main__":
@@ -81,10 +88,10 @@ if __name__ == "__main__":
     # Connect to the Nearmap API for Python
     api_key = get_api_key()  # Paste or type your API Key here as a string
 
-    in_spreadsheet = r''  # r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
-    fid_name = 'fid'  # The FeatureID unique identifier header name for locations of interest
+    in_spreadsheet = r'test_data.csv'  # r'Input.csv'  # Input spreadsheet for processing in csv or excel(xlsx) format
+    fid_name = 'pol'  # The FeatureID unique identifier header name for locations of interest
     lat_name = 'lat'  # Latitude header name
-    lon_name = 'lon'  # Longitude header name
+    lon_name = 'long'  # Longitude header name
 
     out_folder = r'OrthoImagery'
     image_format = "tif"  # Member of "tif", "jpg", "jp2", "png", "cog"
@@ -96,5 +103,7 @@ if __name__ == "__main__":
     exclude = None
     distance = 100
 
-    batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_folder, distance,
-                         image_format, tertiary, since, until, mosaic, include, exclude)
+    # System Parameters
+
+    threaded_batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, lon_name, out_folder, distance,
+                                  image_format, tertiary, since, until, mosaic, include, exclude, threads=10)
