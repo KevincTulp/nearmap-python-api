@@ -26,6 +26,7 @@ dependencies:
   - conda-forge::openpyxl          # A Python library to read/write Excel 2010 xlsx/xlsm files
   - conda-forge::scikit-learn      # Machine Learning in Python
   - conda-forge::jupyterlab        # for running example notebook
+  - conda-forge::nb_conda          # Provides Conda environment and package access extension from within Jupyter
   - conda-forge::pillow            # Python Imaging Library
   - conda-forge::gdal              # Geospatial Data Abstraction Library
   - conda-forge::rasterio          # Simplifieed GDAL library for Python
