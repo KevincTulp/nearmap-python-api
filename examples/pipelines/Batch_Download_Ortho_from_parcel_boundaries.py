@@ -21,8 +21,8 @@ def batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry
                                    include, exclude, res)
             _restructure_data(out_file_basename, out_folder)
             return {fid_name: fid, unique_id_name: unique_id, 'result': 'Success'}
-        except:
-            return {fid_name: fid, unique_id_name: unique_id, 'result': 'Fail'}
+        except Exception as e:
+            return {fid_name: fid, unique_id_name: unique_id, 'result': 'Fail', 'error': e}
 
     def _restructure_data(in_folder, out_folder):
         files = glob(f'{in_folder}/*')
@@ -63,7 +63,7 @@ def batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry
     for job in jobs:
         results.append(job.result())
     print(results)
-    df = pd.DataFrame(results, columns=[fid_name, unique_id_name, 'result'])
+    df = pd.DataFrame(results, columns=[fid_name, unique_id_name, 'result', 'error'])
     df.to_csv(f"{out_folder}\\results.csv")
     return
 
@@ -79,7 +79,6 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Paste or type your API Key here as a string
 
     in_geojson = r'path_togeojson_file.geojson'  # Input Polygon GeoJson File
-
     fid_name = 'My_Unique_Id_For_All_Features'  # Unique Feature ID for all geometries. Numbers can't exist > 1x in the dataset
     unique_id_name = 'My_Unique_Parcel_ID'  # Parcel Lookup Code
     geometry_name = 'geometry'  # Name for the geometry in geopandas
@@ -94,4 +93,4 @@ if __name__ == "__main__":
     exclude = None
 
     batch_download_ortho(api_key, in_geojson, fid_name, unique_id_name, geometry_name, out_folder, image_format,
-                         tertiary, since, until, mosaic, include, exclude, threads=10)
+                         tertiary, since, until, mosaic, include, exclude, threads=16)

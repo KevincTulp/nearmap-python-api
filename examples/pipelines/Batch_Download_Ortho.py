@@ -16,14 +16,13 @@ def threaded_batch_download_ortho(api_key, in_spreadsheet, fid_name, lat_name, l
     def _batch_download_ortho(fid_name, fid, longitude, latitude, distance):
         try:
             polygon = _point_to_square_polygon(in_coords=[longitude, latitude], segment_length=distance * 2)
-            out_file_basename = f"{out_folder}/ortho_{fid}_"
+            out_file_basename = f"{out_folder}/{fid}_"
             nearmap.download_ortho(polygon, out_file_basename, image_format, tertiary, since, until, mosaic,
                                    include, exclude, res)
             _restructure_data(out_file_basename, out_folder)
             return {fid_name: fid, 'result': 'Success'}
-        except:
-            return {fid_name: fid, 'result': 'Fail'}
-
+        except Exception as e:
+            return {fid_name: fid, 'result': 'Fail', 'error': e}
 
     def _point_to_square_polygon(in_coords, segment_length):
         length = segment_length
