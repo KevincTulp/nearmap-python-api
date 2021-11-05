@@ -337,6 +337,8 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
       """
     '''this code generates all static images by hitting the tile api and stitching them together for each grid in the parcel dataframe. uses the command prompt natively, still need to fix for file location selection'''
     from pathlib import Path
+    from shutil import copyfile
+    from os import remove
 
     def structure_rest_endpoint(url, tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None):
         if tertiary:
@@ -383,7 +385,11 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
     out_format = out_format.strip().replace(".", "").lower()
 
     root_dir = Path(__file__).parent.resolve()
-    gdal_xml = f'{root_dir}/tile_dl.xml'
+
+    gdal_xml_source = f'{root_dir}/tile_dl.xml'
+    gdal_xml = f'{out_folder}/tile_dl.xml'
+    copyfile(gdal_xml_source, f'{out_folder}/tile_dl.xml')
+
     structured_endpoint = structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
     _update_xml_api_key(xml_file=gdal_xml, source_string="{api_key}", replace_string=structured_endpoint)
     #if not zoom_level:
@@ -418,7 +424,8 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
         static_image_parameters(gdal_xml, i[1], i[2], i[3], res=res, run_cmd=True)
 
     structure_rest_endpoint(api_key, tertiary, since, until, mosaic, include, exclude)
-    _update_xml_api_key(xml_file=gdal_xml, source_string=structured_endpoint, replace_string="{api_key}")
+    # _update_xml_api_key(xml_file=gdal_xml, source_string=structured_endpoint, replace_string="{api_key}")
+    remove(gdal_xml)
     #if zoom_level != 21:
         # _update_xml_level(xml_file=gdal_xml, zoom_level=zoom_level)
     return
