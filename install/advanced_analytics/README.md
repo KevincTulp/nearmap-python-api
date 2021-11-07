@@ -4,9 +4,9 @@ Advanced Analytics Libraries Installer
 ****
 To install on **Ubuntu/Linux/Mac Machines**:
 
-- See [Installation Instructions](../install/Ubuntu_Install.md)
+- See [Installation Instructions](../Ubuntu_Install.md)
 ****
 To install on **Windows Machines**:
 
-- See [Installation Instructions](../install/Windows_Install.md)
+- See [Installation Instructions](../Windows_Install.md)
 Advanced Analytics Libraries Installer
