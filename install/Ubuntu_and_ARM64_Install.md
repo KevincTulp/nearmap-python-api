@@ -1,7 +1,7 @@
 
-# Installing Nearmap-Python-API on ARM64 Computers (Raspberry PI 4, NVIDIA Jetson Nano...)
+# Installing Nearmap-Python-API on Ubuntu Operating Systems including ARM64 (Raspberry PI 4, NVIDIA Jetson Nano...)
 
-** The following process also supports all versions of ubuntu supported by MiniForge**
+** The process supports all versions of Ubuntu supported by MiniForge**
 ****
 
 1.) Update Ubuntu
