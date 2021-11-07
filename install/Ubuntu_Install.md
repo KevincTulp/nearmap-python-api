@@ -15,7 +15,7 @@
       - ```export PATH=~/Mambaforge/bin:$PATH```
     - For MiniForge3 (Conda):
       - ```wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh && bash Miniforge-$(uname)-$(uname -m).sh```
-      - ```export PATH=~/Miniforge33/bin:$PATH```
+      - ```export PATH=~/Miniforge3/bin:$PATH```
 - Conda:
   - Conda [Installation Instructions](https://docs.anaconda.com/anaconda/install/linux/)
 
