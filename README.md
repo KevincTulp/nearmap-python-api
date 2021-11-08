@@ -5,7 +5,8 @@ Initial Instructions:
 
 1.) Install **One** of the following versions:
 - ["Standard Dependencies Libraries + Nearmap-Python-API"](./install/README.md) 
-- or 
+
+or 
 - ["Standard + Advanced Analytics Libraries + Nearmap-Python-API"](./install/advanced_analytics/README.md) 
 
 2.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
