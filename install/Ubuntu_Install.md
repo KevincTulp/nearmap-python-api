@@ -7,10 +7,10 @@
 1.) Update Ubuntu
 - ```sudo apt update && sudo apt upgrade```
 
-2.) Install Conda of MiniConda/MambaForge... **Install ONLY one or the other!**:
+2.) Install Conda -or- MiniConda/MambaForge... **Install ONLY one or the other!**:
 - MiniConda/Mamba Forge:
   - Install MiniForge Conda or MambaForge: https://github.com/conda-forge/miniforge see process below...
-    - For MambaForge:
+    - For MambaForge (Mamba):
       - ```wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh && bash Mambaforge-$(uname)-$(uname -m).sh```
       - ```export PATH=~/Mambaforge/bin:$PATH```
     - For MiniForge3 (Conda):
