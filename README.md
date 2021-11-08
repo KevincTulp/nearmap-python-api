@@ -5,9 +5,7 @@ Initial Instructions:
 
 1.) Install the ["Standard Dependencies"](./install/README.md) or ["Standard + Advanced Analytics Libraries"](./install/advanced_analytics/README.md) using conda
 
-2.) Implement code in your script or jupyter notebook.. Ensure scripts and notebooks are placed within the nearmap-api-python directory.
-
-3.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
+2.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
 
 _** The current release of the Nearmap API for Python mainly supports synchronous API calls/operations. 
 Asynchronous API calls and more advanced data download operations are continuously being added**_
