@@ -10,6 +10,7 @@ root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/JSON/FormattedGeoJSON/AOI.json"
 # in_feature = f"{root}/nearmap/unit_tests/examples/TestData/Vector/JSON/Unformatted/AOI.json"
 # in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/JSON/Colt_Gateway.json"
+in_feature = f"{root}/nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcel.geojson"
 
 ################
 # KMZ Test Data
@@ -19,7 +20,7 @@ root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
 ################
 # SHP Test Data
 ###############
-in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/SHP/AOI.shp"
+# in_feature = f"{root}/nearmap/unit_tests/TestData/Vector/SHP/AOI.shp"
 
 ################
 # GDB Test Data
@@ -39,3 +40,4 @@ exclude = None
 nearmap = NEARMAP(get_api_key())  # Paste or type your API Key here as a string
 
 nearmap.download_ortho(in_feature, out_folder, out_format, tertiary, since, until, mosaic, include, exclude)
+
