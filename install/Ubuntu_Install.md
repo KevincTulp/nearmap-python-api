@@ -25,7 +25,7 @@
 4.) Download Nearmap-Python-API from GitHub and install environment using Conda:
 
 
-- ```cd Documents && mkdir nearmap && cd nearmap```
+- ```cd Documents```
 
 
 - For Nearmap-Py3-Standard: (Supported on Arm64 Devices)
