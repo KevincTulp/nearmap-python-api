@@ -8,7 +8,7 @@
 #   Python Version: 3.6+
 ####################################
 
-import nearmap._api as _api
+import _api
 
 
 class NEARMAP(object):

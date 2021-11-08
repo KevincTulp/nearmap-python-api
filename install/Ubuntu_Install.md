@@ -27,17 +27,26 @@
 
 - ```cd Documents && mkdir nearmap && cd nearmap```
 
-For Nearmap-Py3-Standard: (Supported on Arm64 Devices)
-- ```git clone https://github.com/nearmap/nearmap-python-api```
+
+- For Nearmap-Py3-Standard: (Supported on Arm64 Devices)
+  - ```git clone https://github.com/nearmap/nearmap-python-api```
+  - ```cd nearmap-python-api/install && conda env create -f environment.yml```
 
 
-- ```cd nearmap-python-api/install && conda env create -f environment.yml```
+- For Nearmap-Py3-Advanced-Analytics Dependencies: (Not Supported on ARM64 Devices)
+  - ```git clone https://github.com/nearmap/nearmap-python-api```
+  - ```cd nearmap-python-api/install/advanced_analytics && conda env create -f environment.yml```
 
-For Neramap-Py3-Advanced-Analytics: (Not Supported on ARM64 Devices)
-- ```git clone https://github.com/nearmap/nearmap-python-api```
-
-
-- ```cd nearmap-python-api/install/advanced_analytics && conda env create -f environment.yml```
+5.) Install Nearmap API for Python **(currently limited to development mode but works... just don't remove the nearmap-python-api folder)**
+- Change Directory to the "nearmap-python-api" root directory
+  - If you just installed "Nearmap-Py3-Standard":
+    - ```cd ..```
+  - If you just installed "Nearmap-Py3-Advanced":
+    - ```cd ../..```
+- Install the Nearmap API for Python in Development Mode using Pip
+  - ```python -m pip install -e .```
+- To Confirm installation:
+  - ```conda list nearmap```
 
 **The Environment Installer only installs the dependencies for the Nearmap API for Python. 
 Be sure to place the "nearmap" library folder next to your scripts.**
