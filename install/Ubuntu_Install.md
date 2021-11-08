@@ -48,5 +48,3 @@
 - To Confirm installation:
   - ```conda list nearmap```
 
-**The Environment Installer only installs the dependencies for the Nearmap API for Python. 
-Be sure to place the "nearmap" library folder next to your scripts.**
