@@ -83,7 +83,7 @@ if __name__ == "__main__":
     unique_id_name = 'My_Unique_Parcel_ID'  # Parcel Lookup Code
     geometry_name = 'geometry'  # Name for the geometry in geopandas
 
-    out_folder = r'output_folder_for_storing_imagery'
+    out_folder = r'My_Output_Folder'
     image_format = "jpg"  # Member of "tif", "jpg", "jp2", "png", "cog"
     tertiary = None
     since = None
