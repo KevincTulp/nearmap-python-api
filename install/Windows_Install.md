@@ -3,7 +3,11 @@
 
 ****
 
-1.) Ensure you have Conda or Miniconda installed from https://www.anaconda.com/
+1.) Ensure you have ***ONE*** of the following Python Package Managers Installed:
+- Conda (Data Science Toolkit): https://www.anaconda.com/products/individual
+- Miniconda (Minimal Installer for Conda): https://docs.conda.io/en/latest/miniconda.html
+- MiniForge3: https://github.com/conda-forge/miniforge#miniforge3
+- MambaForge: https://github.com/conda-forge/miniforge#mambaforge
 
 2.) Open the Conda Command Prompt. More info: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html#starting-conda 
     
@@ -18,7 +22,7 @@
 
 - 5.) Activate the conda environment ```conda activate nearmap-py3```
 
-**For Nearmap-Pyt-Advanced Library Installer:**
+**For Nearmap-Py3-Advanced Library Installer:**
 
 - 3.) Map to the install directory: ```cd``` "nearmap-python-api/install/advanced_analytics"
 
