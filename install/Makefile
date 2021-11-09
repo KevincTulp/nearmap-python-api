@@ -8,9 +8,8 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PROJECT_NAME = nearmap
 ENV_NAME = nearmap-py3
 
-# make conda commands available in the script, notably for activation
-CONDA_BASE=$(conda info --base)
-source $CONDA_BASE/etc/profile.d/conda.sh
+SHELL=/bin/bash
+CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -30,9 +29,9 @@ clean:
 ## Build the local environment from the environment file
 env:
 	conda env create -f environment.yml
-	jupyter labextension install @jupyter-widgets/jupyterlab-manager -y
-        jupyter labextension install arcgis-map-ipywidget@1.8.1 -y
-	@echo ">>> New conda environment, $(ENV_NAME), created. Activate with:\n- source activate $(ENV_NAME)\n- make env_activate"
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
+#	jupyter labextension install @jupyter-widgets/jupyterlab-manager -
+	@echo ">>> New conda environment, $(ENV_NAME), created. Activate with: - source activate $(ENV_NAME) - make env_activate"
 
 ## Export the current environment
 env_export:
@@ -49,7 +48,7 @@ create_kernel:
 
 ## Run all tests in module
 test:
-	. activate $(ENV_NAME)
+	.. activate $(ENV_NAME)
 	pytest
 
 #################################################################################
