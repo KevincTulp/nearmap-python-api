@@ -43,6 +43,9 @@ GOTO %1
         :: Create environment using env file
         CALL conda env create -f environment.yml
 
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
+
         :: Install the local package in development mode
         CALL python -m pip install -e ./../../
 

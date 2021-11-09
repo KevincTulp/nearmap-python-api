@@ -10,7 +10,7 @@
 
 __version__ = "0.1.0"
 
-import _api
+from . import _api
 
 
 class NEARMAP(object):
