@@ -68,7 +68,7 @@ GOTO %1
 :: Just install via pip to active environment
 :pip_install
     ENDLOCAL & (
-        CALL pip install -e .
+        CALL pip install -e /../
     )
     EXIT /B
 
