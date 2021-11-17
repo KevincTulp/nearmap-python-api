@@ -64,13 +64,29 @@ def tile_edges(x, y, z):
 async def get(session, url, path):
     try:
         async with session.get(url=url) as response:
-            if response.status != 200:
+            if response.status == 404:
+                print('Image Does Not Exist:', response.status)
+            elif response.status != 200:
+                print(path)
                 print('Response Code:', response.status)
-            # TODO: check header for image format and return .png vs jpg
-            async for data in response.content.iter_chunked(1024):
-                async with aiofiles.open(path, "ba") as f:
-                    await f.write(data)
+            else:
+                image_format = response.headers.get('Content-Type').replace('image/', '')
+                rate_limit_remaining = int(response.headers.get('x-ratelimit-remaining'))
+                print(path)
+                if rate_limit_remaining < 1000:
+                    print(f"Rate Limit Remaining: {rate_limit_remaining} | Rate Limit Reset: {response.headers.get('x-ratelimit-reset')}")
+                base_path = path.replace('.img', '')
+                if image_format == "jpeg":
+                    path = f'{base_path}.jpg'
+                elif image_format != "jpeg":
+                    print(f'image_format is not jpeg| its {image_format}')
+                    path = f'{base_path}.png'
+                # TODO: check header for image format and return .png vs jpg
+                async for data in response.content.iter_chunked(1024):
+                    async with aiofiles.open(path, "ba") as f:
+                        await f.write(data)
     except Exception as e:
+        print(e)
         print("Unable to get url {} due to {}.".format(url, e.__class__))
 
 
@@ -106,7 +122,7 @@ def get_tiles(api_key, zoom, start_x, start_y, x_tiles, y_tiles, output_dir, max
     for y in range(start_y, start_y + y_tiles):
         for x in range(start_x, start_x + x_tiles):
             url = f'https://api.nearmap.com/tiles/v3/Vert/{zoom}/{x}/{y}.img?apikey={api_key}'
-            path = f'{unprocessed_folder}\\{x}_{y}_{zoom}.jpg'
+            path = f'{unprocessed_folder}\\{x}_{y}_{zoom}.img'
             temp = dict()
             temp['url'] = url
             temp['path'] = path
@@ -115,6 +131,7 @@ def get_tiles(api_key, zoom, start_x, start_y, x_tiles, y_tiles, output_dir, max
             temp['zoom'] = zoom
             urls.append(temp)
             itr += 1
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(get_tiles_client(urls, max_threads))
     end = time.time()
@@ -131,9 +148,16 @@ def get_tiles(api_key, zoom, start_x, start_y, x_tiles, y_tiles, output_dir, max
         # TODO: Implement multiprocessing pool for gdal translate operation
         for url in urls:
             in_image = url.get('path')
-            out_image = f'{georeferenced_folder}\\{Path(in_image).name}'
-            _georeference_tile(in_image, out_image, url.get('x'), url.get('y'), url.get('zoom'))
-            georeferenced_tiles.append(out_image)
+            try:
+                in_image = url.get('path').replace('.img', '.jpg')
+                out_image = f'{georeferenced_folder}\\{Path(in_image).name}'
+                _georeference_tile(in_image, out_image, url.get('x'), url.get('y'), url.get('zoom'))
+                georeferenced_tiles.append(out_image)
+            except:
+                in_image = url.get('path').replace('.img', '.png')
+                out_image = f'{georeferenced_folder}\\{Path(in_image).name}'
+                _georeference_tile(in_image, out_image, url.get('x'), url.get('y'), url.get('zoom'))
+                georeferenced_tiles.append(out_image)
         rmtree(unprocessed_folder)
         end = time.time()
         print(f"Georeferenced Image Tiles in {end - start} Seconds")
@@ -172,16 +196,17 @@ if __name__ == "__main__":
     start_x = 1928740
     start_y = 1257469
     '''
-    lat = -87.73101994900836
-    lon = 41.79082699478777
+    lat = 25.791494
+    lon = -80.147044
     zoom = 21
     max_threads = 25
-    x_tiles = 100
-    y_tiles = 100
+    x_tiles = 170#170#200
+    y_tiles = 5# 220#400
     output_dir = os.path.join(os.path.abspath(''), 'output')
-    method = "merge"  # Options: "merge", "georeference", "tile", "retile"
+    method = "georeference" #"tile" #"merge"  # Options: "merge", "georeference", "tile", "retile"
     out_format = "tif"
 
     # Run Script
     start_x, start_y = latlon_to_xy(lon, lat, zoom)
+    start_x, start_y = [581685, 892982]
     get_tiles(api_key, zoom, start_x, start_y, x_tiles, y_tiles, output_dir, max_threads, method, out_format)
