@@ -62,11 +62,13 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
         print(_http_response_error_reporting(response_code))
 
     # Begin Rate Limiting if response = 429
-    if response_code == 429:  # If user hits default rate limit pause for milliseconds.
+    #if response_code == 429:  # If user hits default rate limit pause for milliseconds.
+    if response_code == 429 or str(response_code)[:1] == "5":
         sleep(0.1)
         image = _image_get_op(url, out_format, out_image)
         response_code = image.status_code
-    if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
+    #if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
+    if response_code == 429 or str(response_code)[:1] == "5":
         rate_limit_modes = ["slow", "fast"]
         assert rate_limit_mode.lower() in rate_limit_modes, f"Error: Rate_limit_mode not a member of " \
                                                             f"{','.join(rate_limit_modes)}"
