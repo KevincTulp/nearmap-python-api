@@ -100,8 +100,16 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
     if out_image.lower() == "bytes":
         return BytesIO(image.content)
     else:
-        open(out_image, 'wb').write(image.content)
-        return out_image
+        image_format = image.headers.get('Content-Type').replace('image/', '')
+        base_path = out_image.replace('.img', '')
+        if image_format == "jpeg":
+            path = f'{base_path}.jpg'
+        elif image_format != "jpeg":
+            path = f'{base_path}.png'
+        source_format = Path(out_image)
+        out_image
+        open(path, 'wb').write(image.content)
+        return path
 
 
 def _http_response_error_reporting(status):
