@@ -144,6 +144,7 @@ async def get(session, url, path, attempt=1):
         attempt += 1
 
     except Exception as e:
+        e = e
         if str(e.__class__) == "<class 'asyncio.exceptions.TimeoutError'>":
             print("d: Unable to get url {} due to {}.".format(url, e.__class__))
         elif str(e) == 'Response Code: 429':
@@ -159,7 +160,7 @@ async def get(session, url, path, attempt=1):
                 sleep_time = 0.3
                 print("Get Error: Backoff Rate Limit time reached 30 minutes... "
                       "restarting multiples of 0.3 seconds.")
-        #print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {e} {e.__class__}")
+        print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {e} {e.__class__}")
         print(attempt, sleep_time)
         session, url, path, sleep_time, attempt, success = await get_multi_attempts(session, url, path, sleep_time,
                                                                                     attempt, success)
@@ -169,6 +170,7 @@ async def get_tiles_client(urls, max_threads):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=max_threads)) as session:
         # TODO: Implement TQDM here for progress bar
         return await asyncio.gather(*[asyncio.create_task(get(session, url['url'], url['path'])) for url in urls])
+
 
 def get_tiles(api_key, in_geojson, output_dir, max_threads=25):
 
