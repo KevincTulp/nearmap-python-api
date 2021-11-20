@@ -91,8 +91,7 @@ def gen_slippy_grid_geoms(lat_min: float, lat_max: float, lon_min: float, lon_ma
 
 if __name__ == "__main__":
 
-    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\scratch_folder\Miami_Beach_and_Biscayne.geojson'
-    #in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\scratch_folder\Miami_Beach_and_Biscayne_Unbuffered.geojson'
+    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\houston_buffered.geojson'
     zoom = 21
     buffer_distance = None
     remove_holes = True
@@ -135,6 +134,6 @@ if __name__ == "__main__":
             zip_grid = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom=zip_zoom_level).drop(['zoom'], axis=1).rename(columns={"x": "zip_x", "y": "zip_y"})
 
         result = rdf.sjoin(zip_grid, how="left").drop(['index_right', 'id'], axis=1).rename(columns={"id_1": "id"})
-        result.to_file(f"miami_beachOOO_{count}.geojson", driver='GeoJSON')
+        result.to_file(f"Houston_{count}.geojson", driver='GeoJSON')
         #result.to_file(f"zipgridFinal_{count}.shp")
         count += 1
