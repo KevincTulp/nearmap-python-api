@@ -44,10 +44,9 @@ def _http_response_error_reporting(status):
 async def download_multi_attempts(session, url, path, sleep_time, attempt, success):
     try:
         print("Get: Are we there yet")
-        # await asyncio.sleep(sleep_time)
-        time.sleep(sleep_time)
-        # await time.sleep(sleep_time)
-        print("Get: We are there! it's not the print statement")
+        await asyncio.sleep(sleep_time)
+        #time.sleep(sleep_time)
+        print("Get: We are there!")
         await download_tile(session, url, path, attempt)
         print(f"Get: Success after attempt {attempt} & sleep time {sleep_time}")
         success = True
@@ -60,23 +59,24 @@ async def download_multi_attempts(session, url, path, sleep_time, attempt, succe
 
 
 async def download_tile(session, url, path, attempt=1):
-    e = None
+    error = None
     success = False
     async with session.get(url=url) as response:
         if response.status == 404:
             # TODO: Log tile as not existing on server
             print(_http_response_error_reporting(response.status))
-
+            error = response.status
         elif response.status == 429 or str(response.status)[:1] == "5":
             ''' Handle 429 and 500 level Errors'''
-            e = response.status
+            error = response.status
             success == False
         elif response.status != 200:
             print(path)
             print('Response Code:', response.status)
-            e = response.status
+            error = response.status
             success == False
         else:
+            error = response.status
             image_format = response.headers.get('Content-Type').replace('image/', '')
             rate_limit_remaining = int(response.headers.get('x-ratelimit-remaining'))
             # print(path)
@@ -94,15 +94,17 @@ async def download_tile(session, url, path, attempt=1):
                     await f.write(data)
                     success = True
     if success == False:
-        sleep_time = 0.1
+        sleep_time = 5 #0.1
         if attempt >= 3:
             sleep_time = (attempt - 2) * 0.3
             if sleep_time > 1800:
                 sleep_time = 0.3
                 print("Get Error: Backoff Rate Limit time reached 30 minutes... "
                       "restarting multiples of 0.3 seconds.")
-        print(attempt, sleep_time)
-        #print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {e} {e.__class__}")
+        if error:
+            print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {error} {error.__class__}")
+        else:
+            print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to unknown error")
         session, url, path, sleep_time, attempt, success = await download_multi_attempts(session, url, path, sleep_time,
                                                                                          attempt, success)
 
@@ -110,9 +112,8 @@ async def download_tile(session, url, path, attempt=1):
 async def get_multi_attempts(session, url, path, sleep_time, attempt, success):
     try:
         print("Get: Are we there yet")
-        # await asyncio.sleep(sleep_time)
-        time.sleep(sleep_time)
-        # await time.sleep(sleep_time)
+        await asyncio.sleep(sleep_time)
+        # time.sleep(sleep_time)
         print("Get: We are there! it's not the print statement")
         await download_tile(session, url, path, attempt)
         print(f"Get: Success after attempt {attempt} & sleep time {sleep_time}")
@@ -132,36 +133,33 @@ async def get_multi_attempts(session, url, path, sleep_time, attempt, success):
 
 async def get(session, url, path, attempt=1):
     success = False
-    e = None
-
+    error = None
     try:
         await download_tile(session, url, path, attempt)
         success = True
-
     except (asyncio.exceptions.TimeoutError, TimeoutError, PermissionError) as e:
         success = False
-        e = e
+        error = e
         attempt += 1
-
     except Exception as e:
-        e = e
-        if str(e.__class__) == "<class 'asyncio.exceptions.TimeoutError'>":
-            print("d: Unable to get url {} due to {}.".format(url, e.__class__))
-        elif str(e) == 'Response Code: 429':
-            print("e: Unable to get url {} due to {}.".format(url, e.__class__))
+        error = e
+        if str(error.__class__) == "<class 'asyncio.exceptions.TimeoutError'>":
+            print("d: Unable to get url {} due to {}.".format(url, error.__class__))
+        elif str(error) == 'Response Code: 429':
+            print("e: Unable to get url {} due to {}.".format(url, error.__class__))
         else:
-            print("f: Unable to get url {} due to {}.".format(url, e.__class__))
-
+            print("f: Unable to get url {} due to {}.".format(url, error.__class__))
     while success == False:
-        sleep_time = 0.1
+        sleep_time = 5 #0.1
         if attempt >= 3:
             sleep_time = (attempt - 2) * 0.3
             if sleep_time > 1800:
                 sleep_time = 0.3
                 print("Get Error: Backoff Rate Limit time reached 30 minutes... "
                       "restarting multiples of 0.3 seconds.")
-        print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {e} {e.__class__}")
-        print(attempt, sleep_time)
+        if error:
+            print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to {error} {error.__class__}")
+        else: print(f"Get Error: {attempt} with sleep time {sleep_time} Unable to get url {url} due to unknown error")
         session, url, path, sleep_time, attempt, success = await get_multi_attempts(session, url, path, sleep_time,
                                                                                     attempt, success)
 
