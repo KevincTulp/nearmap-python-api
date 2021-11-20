@@ -24,7 +24,7 @@ def list_files(in_folder):
 def zip_files(in_data_list):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
-    with ZipFile(in_data_list[1] + ".zip", 'w') as zipF:
+    with ZipFile(f"./{in_data_list[1].zip}", 'w') as zipF:
         for index, row in in_data_list[0].iterrows():
             if type(row['file']) == float: #TODO this is temp, probably better way to classify and scip when a file isnt found.
                 pass
