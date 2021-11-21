@@ -3,6 +3,7 @@ from osgeo.gdal import Translate
 from math import log, tan, radians, cos, atan, sinh, pi, degrees
 from shapely.geometry import Polygon, box
 import geopandas as gpd
+import time
 try:
     from ujson import load, dump, dumps
 except ModuleNotFoundError:
@@ -63,6 +64,7 @@ def georeference_tile(in_file, out_file, x, y, zoom):
 
 
 def gen_slippy_grid_geoms(lat_min: float, lat_max: float, lon_min: float, lon_max: float, zoom: int):
+    start = time.time()
     xmin, ymin = latlon_to_xy(lat_min, lon_min, zoom)
     xmax, ymax = latlon_to_xy(lat_max, lon_max, zoom)
     if xmax >= xmin:
@@ -86,54 +88,64 @@ def gen_slippy_grid_geoms(lat_min: float, lat_max: float, lon_min: float, lon_ma
                 'zoom': zoom
             })
             count += 1
+    end = time.time()  # End Clocking
+    print(f"Generated Slippy Grid in {end - start} seconds")
     return gpd.GeoDataFrame(tiles).set_crs('epsg:4326')
+
+
+def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name):
+    start = time.time()
+    with open(in_geojson) as f:
+        data = load(f)
+        slippy_gridz = []
+        count = 0
+        # for f in data.get('features'):
+        gdf = gpd.read_file(in_geojson)
+        print(gdf.head())
+        for index, row in gdf.iterrows():
+            AOI_Poly = row['geometry']
+
+            # TODO Get this working
+            if buffer_distance:
+                # TODO: Requires detecting the UTM CRS and reprojecting data https://pyproj4.github.io/pyproj/stable/examples.html#find-utm-crs-by-latitude-and-longitude
+                AOI_Poly = AOI_Poly.geometry.buffer(buffer_distance)
+                # TODO: Then reproject to 'epsg:4326'
+            if remove_holes:
+                AOI_Poly = Polygon(list(AOI_Poly.exterior.coords))
+            extent = AOI_Poly.bounds
+
+            lon_min = min([extent[0], extent[2]])
+            lon_max = max([extent[0], extent[2]])
+            lat_min = min([extent[1], extent[3]])
+            lat_max = max([extent[1], extent[3]])
+
+            print(lon_min, lon_max, lat_min, lat_max)
+            the_slippy = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom)
+
+            aoi_poly_gdf = gpd.GeoDataFrame([{'geometry': AOI_Poly, 'id': 1}]).set_crs('epsg:4326')
+
+            r = the_slippy.sjoin(aoi_poly_gdf, how="left")
+            rdf = r[r.id_right.notnull()].drop(['id_left', 'id_right', 'index_right'], axis=1)
+            if zip_tiles:
+                zip_grid = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max,
+                                                 zoom=zip_zoom_level).drop(['zoom'], axis=1).rename(
+                    columns={"x": "zip_x", "y": "zip_y"})
+
+            result = rdf.sjoin(zip_grid, how="left").drop(['index_right', 'id'], axis=1).rename(columns={"id_1": "id"})
+            result.to_file(f"{place_name}_{count}.geojson", driver='GeoJSON')
+            count += 1
+            end = time.time()  # End Clocking
+            print(f"Processed {place_name} geometry # 1 in {end - start} seconds")
 
 
 if __name__ == "__main__":
 
-    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\houston_buffered.geojson'
+    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\NewOrleans.geojson'
     zoom = 21
-    buffer_distance = None
+    buffer_distance = None # Currently Not Working
     remove_holes = True
-    zip_tiles = True
+    zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
+    place_name = "NewOrleans_tiles.geojson"
 
-    with open(in_geojson) as f:
-        data = load(f)
-
-    slippy_gridz = []
-    count = 0
-    #for f in data.get('features'):
-    gdf = gpd.read_file(in_geojson)
-    print(gdf.head())
-    for index,row in gdf.iterrows():
-        AOI_Poly = row['geometry']
-
-        # TODO Get this working
-        if buffer_distance:
-            # TODO: Requires detecting the UTM CRS and reprojecting data https://pyproj4.github.io/pyproj/stable/examples.html#find-utm-crs-by-latitude-and-longitude
-            AOI_Poly = AOI_Poly.geometry.buffer(buffer_distance)
-            # TODO: Then reproject to 'epsg:4326'
-        if remove_holes:
-            AOI_Poly = Polygon(list(AOI_Poly.exterior.coords))
-        extent = AOI_Poly.bounds
-
-        lon_min = min([extent[0], extent[2]])
-        lon_max = max([extent[0], extent[2]])
-        lat_min = min([extent[1], extent[3]])
-        lat_max = max([extent[1], extent[3]])
-
-        print(lon_min, lon_max, lat_min, lat_max)
-        the_slippy = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom)
-
-        aoi_poly_gdf = gpd.GeoDataFrame([{'geometry': AOI_Poly, 'id':1}]).set_crs('epsg:4326')
-
-        r = the_slippy.sjoin(aoi_poly_gdf, how="left")
-        rdf = r[r.id_right.notnull()].drop(['id_left', 'id_right', 'index_right'], axis=1)
-        if zip_tiles:
-            zip_grid = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom=zip_zoom_level).drop(['zoom'], axis=1).rename(columns={"x": "zip_x", "y": "zip_y"})
-
-        result = rdf.sjoin(zip_grid, how="left").drop(['index_right', 'id'], axis=1).rename(columns={"id_1": "id"})
-        result.to_file(f"Houston_{count}.geojson", driver='GeoJSON')
-        #result.to_file(f"zipgridFinal_{count}.shp")
-        count += 1
+    slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name)
