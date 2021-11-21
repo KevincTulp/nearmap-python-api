@@ -101,8 +101,9 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
         count = 0
         # for f in data.get('features'):
         gdf = gpd.read_file(in_geojson)
-        print(gdf.head())
+        #print(gdf.head())
         for index, row in gdf.iterrows():
+            print(f"begin processing {place_name} feature {index}")
             AOI_Poly = row['geometry']
 
             # TODO Get this working
@@ -119,7 +120,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
             lat_min = min([extent[1], extent[3]])
             lat_max = max([extent[1], extent[3]])
 
-            print(lon_min, lon_max, lat_min, lat_max)
+            #print(lon_min, lon_max, lat_min, lat_max)
             the_slippy = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom)
 
             aoi_poly_gdf = gpd.GeoDataFrame([{'geometry': AOI_Poly, 'id': 1}]).set_crs('epsg:4326')
@@ -135,7 +136,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
             result.to_file(f"{place_name}_{count}.geojson", driver='GeoJSON')
             count += 1
             end = time.time()  # End Clocking
-            print(f"Processed {place_name} geometry # 1 in {end - start} seconds")
+            print(f"Processed {place_name} geometry # {index} in {end - start} seconds")
 
 
 if __name__ == "__main__":
