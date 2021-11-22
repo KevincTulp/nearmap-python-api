@@ -1,8 +1,14 @@
 from pathlib import Path
 from osgeo.gdal import Translate
 from math import log, tan, radians, cos, atan, sinh, pi, degrees
-from shapely.geometry import Polygon, box
+import fiona
+from fiona.transform import transform_geom
+from shapely.geometry import Polygon, box, shape
+from shapely import ops
+import tiletanic
 import geopandas as gpd
+from collections import defaultdict
+
 import time
 try:
     from ujson import load, dump, dumps
@@ -63,7 +69,8 @@ def georeference_tile(in_file, out_file, x, y, zoom):
     Translate(out_file, in_file, outputSRS='EPSG:4326', outputBounds=bounds)
 
 
-def gen_slippy_grid_geoms(lat_min: float, lat_max: float, lon_min: float, lon_max: float, zoom: int):
+
+def gen_slippy_grid_geoms_old(lat_min: float, lat_max: float, lon_min: float, lon_max: float, zoom: int):
     start = time.time()
     xmin, ymin = latlon_to_xy(lat_min, lon_min, zoom)
     xmax, ymax = latlon_to_xy(lat_max, lon_max, zoom)
@@ -93,60 +100,116 @@ def gen_slippy_grid_geoms(lat_min: float, lat_max: float, lon_min: float, lon_ma
     return gpd.GeoDataFrame(tiles).set_crs('epsg:4326')
 
 
+def get_tiles(in_geojson, zoom, remove_holes, zip_zoom_level):
+    ts = time.time()
+    geoms = []
+    scheme = tiletanic.tileschemes.WebMercator()
+    with fiona.open(in_geojson) as src:
+        for rec in src:
+            # Convert to web mercator, load as shapely geom.
+            wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
+
+            if remove_holes:
+                wm_geom = Polygon(wm_geom.exterior)
+            geoms.append(wm_geom)
+    # Find the covering.
+    tiles = []
+    for geom in geoms:
+        tiles.extend(t for t in tiletanic.tilecover.cover_geometry(scheme, wm_geom, zoom))
+    # Remove dupes if geoms overlapped.
+    tiles = set(tiles)
+    # Group by zip_zoom_level.
+    zip_d = defaultdict(list)
+    for t in tiles:
+        zip_d[scheme.quadkey(t)[:zip_zoom_level]].append(t)
+    # Note that at this stage we have all the XYZ tiles per zip_zoom_level.
+    te = time.time()
+    print(f'tiles created in {te - ts} seconds');
+
+    ts = time.time()
+    r_tiles = []
+    id = 0
+    for zzl in zip_d:
+        for t in zip_d.get(zzl):
+            bounds = tile_edges(t.x, t.y, t.z)
+            r_tiles.append({
+                'geometry': box(bounds[0], bounds[1], bounds[2], bounds[3]),
+                'id': id,
+                'x': t.x,
+                'y': t.y,
+                'zoom': t.z,
+                'zip_zoom': zzl
+            })
+            id += 1
+    result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+    te = time.time()
+    print(f'formatted as DataFrame in {te - ts} seconds');
+    return result
+
+
 def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name):
     start = time.time()
-    with open(in_geojson) as f:
-        data = load(f)
-        slippy_gridz = []
-        count = 0
-        # for f in data.get('features'):
-        gdf = gpd.read_file(in_geojson)
-        #print(gdf.head())
-        for index, row in gdf.iterrows():
-            print(f"begin processing {place_name} feature {index}")
-            AOI_Poly = row['geometry']
+    ts = time.time()
+    geoms = []
+    scheme = tiletanic.tileschemes.WebMercator()
+    with fiona.open(in_geojson) as src:
+        for rec in src:
+            # Convert to web mercator, load as shapely geom.
+            wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
 
-            # TODO Get this working
-            if buffer_distance:
-                # TODO: Requires detecting the UTM CRS and reprojecting data https://pyproj4.github.io/pyproj/stable/examples.html#find-utm-crs-by-latitude-and-longitude
-                AOI_Poly = AOI_Poly.geometry.buffer(buffer_distance)
-                # TODO: Then reproject to 'epsg:4326'
             if remove_holes:
-                AOI_Poly = Polygon(list(AOI_Poly.exterior.coords))
-            extent = AOI_Poly.bounds
+                wm_geom = Polygon(wm_geom.exterior)
+            geoms.append(wm_geom)
+    # Find the covering.
+    tiles = []
+    for geom in geoms:
+        tiles.extend(t for t in tiletanic.tilecover.cover_geometry(scheme, wm_geom, zoom))
+    # Remove dupes if geoms overlapped.
+    tiles = set(tiles)
+    # Group by zip_zoom_level.
+    zip_d = defaultdict(list)
+    for t in tiles:
+        zip_d[scheme.quadkey(t)[:zip_zoom_level]].append(t)
+    # Note that at this stage we have all the XYZ tiles per zip_zoom_level.
+    te = time.time()
+    print(f'tiles created in {te - ts} seconds');
 
-            lon_min = min([extent[0], extent[2]])
-            lon_max = max([extent[0], extent[2]])
-            lat_min = min([extent[1], extent[3]])
-            lat_max = max([extent[1], extent[3]])
-
-            #print(lon_min, lon_max, lat_min, lat_max)
-            the_slippy = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max, zoom)
-
-            aoi_poly_gdf = gpd.GeoDataFrame([{'geometry': AOI_Poly, 'id': 1}]).set_crs('epsg:4326')
-
-            r = the_slippy.sjoin(aoi_poly_gdf, how="left")
-            rdf = r[r.id_right.notnull()].drop(['id_left', 'id_right', 'index_right'], axis=1)
-            if zip_tiles:
-                zip_grid = gen_slippy_grid_geoms(lat_min, lat_max, lon_min, lon_max,
-                                                 zoom=zip_zoom_level).drop(['zoom'], axis=1).rename(
-                    columns={"x": "zip_x", "y": "zip_y"})
-
-            result = rdf.sjoin(zip_grid, how="left").drop(['index_right', 'id'], axis=1).rename(columns={"id_1": "id"})
-            result.to_file(f"{place_name}_{count}.geojson", driver='GeoJSON')
-            count += 1
-            end = time.time()  # End Clocking
-            print(f"Processed {place_name} geometry # {index} in {end - start} seconds")
+    ts = time.time()
+    r_tiles = []
+    id = 0
+    for zzl in zip_d:
+        for t in zip_d.get(zzl):
+            bounds = tile_edges(t.x, t.y, t.z)
+            r_tiles.append({
+                'geometry': box(bounds[0], bounds[1], bounds[2], bounds[3]),
+                'id': id,
+                'x': t.x,
+                'y': t.y,
+                'zoom': t.z,
+                'zip_zoom': zzl
+            })
+            id += 1
+    result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+    te = time.time()
+    print(f'formatted as geoDataFrame in {te - ts} seconds');
+    ts = time.time()
+    out_geojson = f"{place_name}.geojson"
+    result.to_file(out_geojson, driver='GeoJSON')
+    te = time.time()
+    print(f"Exported to GeoJSON in {te - ts} seconds")
+    end = time.time()  # End Clocking
+    print(f"Processed {place_name} in {end - start} seconds")
+    return result
 
 
 if __name__ == "__main__":
 
-    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\NewOrleans.geojson'
+    in_geojson = r'miami_beach_buffered.geojson'
     zoom = 21
     buffer_distance = None # Currently Not Working
     remove_holes = True
     zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
-    place_name = "NewOrleans_tiles.geojson"
+    place_name = "miami_beach_tiles.geojson"
 
     slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name)
