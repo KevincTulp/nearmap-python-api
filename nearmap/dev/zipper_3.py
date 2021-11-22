@@ -24,7 +24,7 @@ def list_files(in_folder):
 def zip_files(in_data_list):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
-    with ZipFile(f"./{in_data_list[1].zip}", 'w') as zipF:
+    with ZipFile(f"../{in_data_list[1]}.zip", 'w') as zipF:
         for index, row in in_data_list[0].iterrows():
             if type(row['file']) == float: #TODO this is temp, probably better way to classify and scip when a file isnt found.
                 pass
@@ -37,14 +37,11 @@ def zip_files(in_data_list):
     #
 
 
-def threaded_zip_files(processing_folder, manifest_gdf, threads: int = 10):
-
+def threaded_zip_files(processing_folder, manifest_geojson, threads: int = 10):
+    print("Preparing to zip files")
+    manifest_gdf = gpd.read_file(manifest_geojson)
     start = time.time()  # Begin Clocking Initial Data Prep
-    large_grids = []
-    for row, column in manifest_gdf.iterrows():
-        large_grids.append(str(column.zip_x) + '_' + str(column.zip_y) + '_' + '13')
-    manifest_gdf['large_grids'] = large_grids  # add column to pandas dataframe of all tiles
-    large_grids = list(manifest_gdf['large_grids'].unique())  # get unique values for z13 grids
+    large_grids = list(manifest_gdf['zip_zoom'].unique())  # get unique values for z13 grids
 
     list_of_tile_names = []  # for current large grid
     for row, column in manifest_gdf.iterrows():
@@ -55,8 +52,8 @@ def threaded_zip_files(processing_folder, manifest_gdf, threads: int = 10):
     merged_df = pd.merge(manifest_gdf, my_files_df, how='left', on='expected_tile_name')
 
     df_list = []
-    for grid in list(merged_df['large_grids'].unique()):
-        df_list.append([merged_df[merged_df["large_grids"] == grid],grid])
+    for grid in list(merged_df['zip_zoom'].unique()):
+        df_list.append([merged_df[merged_df['zip_zoom'] == grid],grid])
     # df_list = [[df0, "grid_name"], [df1, "grid_name"]]
     # print(merged_df['expected_tile_name'].unique())
 
@@ -101,8 +98,8 @@ if __name__ == "__main__":
     root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
     # processing_folder = f"{root}/nearmap/unit_tests/TestData/snap"
     processing_folder = r"C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\miami_beach_data\tiles"
-    manifest_gdf = gpd.read_file(r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\miami_beachOOO_1.geojson')
+    manifest_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\miami_beach_tiles.geojson.geojson'
     threads = 25
 
     # Begin Script
-    threaded_zip_files(processing_folder, manifest_gdf, threads)
+    threaded_zip_files(processing_folder, manifest_geojson, threads)
