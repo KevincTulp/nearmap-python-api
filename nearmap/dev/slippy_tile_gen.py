@@ -124,7 +124,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
     print(f"Exported to GeoJSON in {te - ts} seconds")
     end = time.time()  # End Clocking
     print(f"Processed {place_name} in {end - start} seconds")
-    return result
+    return out_geojson
 
 
 if __name__ == "__main__":
