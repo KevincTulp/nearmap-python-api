@@ -192,6 +192,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
     result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
     te = time.time()
     print(f'formatted as geoDataFrame in {te - ts} seconds');
+    print('Begin Exporting Results to geojson file')
     ts = time.time()
     out_geojson = f"{place_name}.geojson"
     result.to_file(out_geojson, driver='GeoJSON')
@@ -210,6 +211,6 @@ if __name__ == "__main__":
     remove_holes = True
     zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
-    place_name = "miami_beach_tiles.geojson"
+    place_name = "miami_beach_tiles"
 
     slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name)
