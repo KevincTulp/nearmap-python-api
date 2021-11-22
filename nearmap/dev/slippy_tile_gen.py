@@ -92,6 +92,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
     zip_d = defaultdict(list)
     for t in tiles:
         zip_d[scheme.quadkey(t)[:zip_zoom_level]].append(t)
+    del tiles
     # Note that at this stage we have all the XYZ tiles per zip_zoom_level.
     te = time.time()
     print(f'tiles created in {te - ts} seconds');
@@ -111,6 +112,7 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
                 'zip_zoom': zzl
             })
             id += 1
+    del zip_d
     result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
     te = time.time()
     print(f'formatted as geoDataFrame in {te - ts} seconds');
@@ -127,12 +129,12 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
 
 if __name__ == "__main__":
 
-    in_geojson = r'miami_beach_buffered.geojson'
+    in_geojson = r'ColoradoSprings_Buffered.geojson'
     zoom = 21
     buffer_distance = None # Currently Not Working
     remove_holes = True
     zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
-    place_name = "miami_beach_tiles"
+    place_name = "ColoradoSprings"
 
     slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name)
