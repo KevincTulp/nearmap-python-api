@@ -50,4 +50,5 @@ dependencies:
   - conda-forge::qgis              # Python bindings
   - python>=3.8       # libraries require python 3.8 or more recent releases.
   - pip:
+      - tiletanic     # Tools for Manipulating Geospatial Tiling Schemes
       - keplergl      # Dependency for leafmap
