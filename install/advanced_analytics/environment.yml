@@ -48,6 +48,7 @@ dependencies:
   - conda-forge::pytest            # for running tests
   - conda-forge::nodejs            # leafmap dependency & ArcGIS API for Python Dependency <-- If Esri ever supports python 3.8+
   - conda-forge::qgis              # Python bindings
+  - anaconda::boto3                # Install Amazon AWS Boto3
   - python>=3.8       # libraries require python 3.8 or more recent releases.
   - pip:
       - tiletanic     # Tools for Manipulating Geospatial Tiling Schemes

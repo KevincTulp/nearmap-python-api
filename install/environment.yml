@@ -28,6 +28,7 @@ dependencies:
   - conda-forge::fiona             # OGR's Neat and Nimble API for Python programmers (Think Ogre Shrek "Fiona".. lol)
   - conda-forge::pyproj            # Python interface to PROJ (cartographic projections and coordinate transformations library)
   - conda-forge::geopandas         # Geospatial Pandas Library
+  - anaconda::boto3                # Install Amazon AWS Boto3
   - python>=3.8       # libraries require python 3.8 or more recent releases.
   - pip:
       - tiletanic     # Tools for Manipulating Geospatial Tiling Schemes
