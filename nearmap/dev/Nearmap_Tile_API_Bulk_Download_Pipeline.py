@@ -18,7 +18,7 @@ def _create_folder(folder):
 def batch_process(in_folder, output_folder, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, overwrite_images, threads):
     if not Path(output_folder).exists():
         _create_folder(output_folder)
-    exit()
+
     files = list(Path(in_folder).iterdir())
     for f in files:
         if f.suffix == ".geojson":
