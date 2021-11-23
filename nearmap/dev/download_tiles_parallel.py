@@ -21,21 +21,20 @@ def download_tiles(in_params):
 
 def threaded_get_tiles(api_key, in_geojson, output_dir, overwrite_images, threads=25):
 
-    def _create_folder(folder):
-        folder = Path(folder)
-        #if folder.exists():
-        #    rmtree(folder)
-        folder.mkdir(parents=True, exist_ok=True)
-        return folder
-
     assert Path(in_geojson).suffix.lower() in '.geojson', f'error: in_geojson not detected as geojson file: {in_geojson}'
 
     scratch_folder = output_dir
 
+    def _create_folder(folder):
+        folder = Path(folder)
+        # if folder.exists():
+        #    rmtree(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
     Path(scratch_folder).mkdir(parents=True, exist_ok=True)
     tiles_folder = f'{scratch_folder}\\tiles'
-    zip_folder = f'{scratch_folder}\\zips'
-    [_create_folder(f) for f in [scratch_folder, tiles_folder, zip_folder]]
+    [_create_folder(f) for f in [scratch_folder, tiles_folder]]
     urls = []
 
     start = time.time()

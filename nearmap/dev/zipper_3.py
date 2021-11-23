@@ -21,7 +21,7 @@ def list_files(in_folder):
     return pd.DataFrame.from_dict(d, orient='index', columns=['file', 'expected_tile_name'])
 
 
-def zip_files(in_data_list):
+def zip_files(in_data_list, processing_folder):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
     with ZipFile(f"../{in_data_list[1]}.zip", 'w') as zipF:
@@ -69,7 +69,7 @@ def threaded_zip_files(processing_folder, manifest_geojson, threads: int = 10):
     with concurrent.futures.ThreadPoolExecutor(threads) as executor:
         # TODO uncomment out the code below and remove the single dataframe processing version
         for df in df_list:
-            jobs.append(executor.submit(zip_files, df))
+            jobs.append(executor.submit(zip_files, df, processing_folder))
         '''
         for df in [df_list[0]]:
             jobs.append(executor.submit(zip_files, df))
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # User Inputs
     #############
 
-    root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
+    #root = str(Path(__file__).parents[2]).replace('\\', '/')  # Get root of project
     # processing_folder = f"{root}/nearmap/unit_tests/TestData/snap"
     processing_folder = r"C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\miami_beach_data\tiles"
     manifest_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\miami_beach_tiles.geojson.geojson'

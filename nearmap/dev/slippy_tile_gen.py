@@ -69,13 +69,17 @@ def georeference_tile(in_file, out_file, x, y, zoom):
     Translate(out_file, in_file, outputSRS='EPSG:4326', outputBounds=bounds)
 
 
-def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name):
+def slippy_tile_gen(in_geojson, out_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level):
+    print(in_geojson, out_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level)
+
     start = time.time()
     ts = time.time()
     geoms = []
     scheme = tiletanic.tileschemes.WebMercator()
+    in_geojson = Path(in_geojson)
     with fiona.open(in_geojson) as src:
         for rec in src:
+            print(rec)
             # Convert to web mercator, load as shapely geom.
             wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
 
@@ -118,23 +122,21 @@ def slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, 
     print(f'formatted as geoDataFrame in {te - ts} seconds');
     print('Begin Exporting Results to geojson file')
     ts = time.time()
-    out_geojson = f"{place_name}.geojson"
     result.to_file(out_geojson, driver='GeoJSON')
     te = time.time()
     print(f"Exported to GeoJSON in {te - ts} seconds")
     end = time.time()  # End Clocking
-    print(f"Processed {place_name} in {end - start} seconds")
+    print(f"Processed {in_geojson} in {end - start} seconds")
+    #return out_geojson
     return out_geojson
 
 
 if __name__ == "__main__":
 
-    in_geojson = r'ColoradoSprings_Buffered.geojson'
     zoom = 21
     buffer_distance = None # Currently Not Working
     remove_holes = True
     zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
-    place_name = "ColoradoSprings"
-
-    slippy_tile_gen(in_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level, place_name)
+    out_geojson= "test.geojson"
+    slippy_tile_gen(in_geojson, out_geojson, zoom, buffer_distance, remove_holes, zip_tiles, zip_zoom_level)
