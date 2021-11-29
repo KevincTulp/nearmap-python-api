@@ -216,7 +216,11 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
 
 
 if __name__ == "__main__":
+    ###############
+    # User Inputs
+    #############
 
+    # Connect to the Nearmap API for Python
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
 
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"

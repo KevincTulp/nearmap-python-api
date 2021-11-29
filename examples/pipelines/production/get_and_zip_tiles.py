@@ -211,6 +211,12 @@ def tile_downloader(api_key, in_geojson, output_dir, out_manifest, zoom, buffer_
 
 
 if __name__ == "__main__":
+
+    ###############
+    # User Inputs
+    #############
+
+    # Connect to the Nearmap API for Python
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
 
     in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\test_aoi.geojson'
@@ -222,5 +228,6 @@ if __name__ == "__main__":
     zip_zoom_level = 13
     out_manifest= True
     threads = 32
+
     tile_downloader(api_key, in_geojson, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
                     zip_zoom_level, threads)
