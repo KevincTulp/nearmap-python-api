@@ -116,7 +116,7 @@ def download_tiles(in_params, out_manifest):
         return m
 
 
-def tile_downloader(api_key, in_geojson, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
+def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
                     zip_zoom_level, threads):
 
     def _create_folder(folder):
@@ -124,95 +124,104 @@ def tile_downloader(api_key, in_geojson, output_dir, out_manifest, zoom, buffer_
         folder.mkdir(parents=True, exist_ok=True)
         return folder
 
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    tiles_folder = f'{output_dir}\\tiles'
-    _create_folder(output_dir)
-
-    print("Begin Generateing Tile Grid")
-    start = time.time()
-    ts = time.time()
-    geoms = []
-    scheme = tiletanic.tileschemes.WebMercator()
-    in_geojson = Path(in_geojson)
-    with fiona.open(in_geojson) as src:
-        for rec in src:
-            # Convert to web mercator, load as shapely geom.
-            wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
-            if remove_holes:
-                wm_geom = Polygon(wm_geom.exterior)
-            geoms.append(wm_geom)
-    # Find the covering.
-    tiles = []
-    for geom in geoms:
-        tiles.extend(t for t in tiletanic.tilecover.cover_geometry(scheme, wm_geom, zoom))
-    # Remove dupes if geoms overlapped.
-    tiles = set(tiles)
-    # Group by zip_zoom_level.
-    zip_d = defaultdict(list)
-    for t in tiles:
-        zip_d[scheme.quadkey(t)[:zip_zoom_level]].append(t)
-    del tiles
-    # Note that at this stage we have all the XYZ tiles per zip_zoom_level.
-    te = time.time()
-    print(f'Tile Grid Generated in {te - ts} seconds');
-
-    print("Begin Downloading Tiles")
-    ts = time.time()
-    r_tiles = []
-    fid = 0
-    iter = 0
-    time.sleep(0.1)  # Sleep Temporarily to ensure previous stats are printed
-    for zzl in tqdm(zip_d):
-        jobs = []
-        _create_folder(tiles_folder)
-        with concurrent.futures.ThreadPoolExecutor(threads) as executor:
-            for t in zip_d.get(zzl):
-                url = f'https://api.nearmap.com/tiles/v3/Vert/{t.z}/{t.x}/{t.y}.img?apikey={api_key}'
-                path = f'{tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
-                if True in [Path(path.replace('.img', '.jpg')).is_file(), Path(path.replace('.img', '.png')).is_file()]:
-                    print(f"skipping {path} | File Already Exists")
-                #else:
-                temp = dict()
-                temp['id'] = fid
-                temp['url'] = url
-                temp['path'] = path
-                temp['x'] = t.x
-                temp['y'] = t.y
-                temp['zoom'] = t.z
-                temp['zip_zoom'] = zzl
-                jobs.append(executor.submit(download_tiles, temp, out_manifest))
-                fid += 1
-        # TODO: Zip the tiles that were downloaded.
-        results = []
-        for job in jobs:
-            result = job.result()
-            results.append(result)
-            r_tiles.append(result)
-        zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
-        rmtree(tiles_folder)
-        iter += 1
-    te = time.time()
-    print(f'Downloaded and Zipped Tiles in {te - ts} seconds');
-    del zip_d
-    if out_manifest:
+    files = tqdm(list(Path(input_dir).iterdir()))
+    in_geojson = None
+    for file in files:
+        if file.suffix == ".geojson":
+            in_geojson = file
+        files.set_description(f"Processing {file.name}")
+        name_string = Path(in_geojson).stem.replace("_Source", "")
+        state_abbrev = name_string.split("_")[0]
+        place_name = f'{name_string.split("_")[1]}_{name_string.split("_")[2]}'
+        project_folder = f'{output_dir}/{state_abbrev}/{place_name}'
+        _create_folder(project_folder)
+        tiles_folder = f'{project_folder}/tiles'
+        files.set_postfix({'status': 'Generating Tile Grid'})
+        start = time.time()
         ts = time.time()
-        print(f'Begin Loading Manifest to GeoDataFrame')
-        result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+        geoms = []
+        scheme = tiletanic.tileschemes.WebMercator()
+        in_geojson = Path(in_geojson)
+        with fiona.open(in_geojson) as src:
+    
+            for rec in src:
+                # Convert to web mercator, load as shapely geom.
+                wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
+                if remove_holes:
+                    wm_geom = Polygon(wm_geom.exterior)
+                geoms.append(wm_geom)
+        # Find the covering.
+        tiles = []
+        for geom in geoms:
+            tiles.extend(t for t in tiletanic.tilecover.cover_geometry(scheme, wm_geom, zoom))
+        # Remove dupes if geoms overlapped.
+        tiles = set(tiles)
+        # Group by zip_zoom_level.
+        zip_d = defaultdict(list)
+        for t in tiles:
+            zip_d[scheme.quadkey(t)[:zip_zoom_level]].append(t)
+        del tiles
+        # Note that at this stage we have all the XYZ tiles per zip_zoom_level.
         te = time.time()
-        print(f'Loaded Manifest as GeoDataFrame in {te - ts} seconds');
-        print('Begin Exporting Results to geojson file')
+        files.set_postfix({'status': f'Tile Grid Generated in {te - ts} seconds'});
+        files.set_postfix({'status': 'Downloading Tiles'})
         ts = time.time()
-        result.to_file(f"{output_dir}\\manifest.geojson", driver='GeoJSON')
+        r_tiles = []
+        fid = 0
+        iter = 0
+        time.sleep(0.1)  # Sleep Temporarily to ensure previous stats are printed
+        for zzl in tqdm(zip_d):
+            jobs = []
+            _create_folder(tiles_folder)
+            with concurrent.futures.ThreadPoolExecutor(threads) as executor:
+                for t in zip_d.get(zzl):
+                    url = f'https://api.nearmap.com/tiles/v3/Vert/{t.z}/{t.x}/{t.y}.img?apikey={api_key}'
+                    path = f'{tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
+                    temp = dict()
+                    temp['id'] = fid
+                    temp['url'] = url
+                    temp['path'] = path
+                    temp['x'] = t.x
+                    temp['y'] = t.y
+                    temp['zoom'] = t.z
+                    temp['zip_zoom'] = zzl
+                    jobs.append(executor.submit(download_tiles, temp, out_manifest))
+                    fid += 1
+            # TODO: Zip the tiles that were downloaded.
+            results = []
+            for job in jobs:
+                result = job.result()
+                results.append(result)
+                r_tiles.append(result)
+            zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
+            rmtree(tiles_folder)
+            iter += 1
         te = time.time()
-        print(f"Exported to GeoJSON in {te - ts} seconds")
-    end = time.time()  # End Clocking
-    print(f"Complete Processing {in_geojson} in {end - start} seconds")
+        files.set_postfix({'status' : f'Downloaded and Zipped Tiles in {te - ts} seconds'});
+        del zip_d
+        if out_manifest:
+            ts = time.time()
+            files.set_postfix({'status': 'Begin Loading Manifest to GeoDataFrame'})
+            #print(f'Begin Loading Manifest to GeoDataFrame')
+            result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+            te = time.time()
+            files.set_postfix({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
+            files.set_postfix({'status': 'Begin Exporting Results to geojson file'})
+            ts = time.time()
+            result.to_file(f"{project_folder}\\manifest.geojson", driver='GeoJSON')
+            te = time.time()
+            files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
+        end = time.time()  # End Clocking
+        files.set_postfix({'status': f"Processed in {end - start} seconds"})
 
 
 if __name__ == "__main__":
+
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
 
-    in_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\dev\test_aoi.geojson'
+    # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
+    # Example: "FL_1245025_MiamiBeach_Source.geojson"
+    input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
     output_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\output'
     zoom = 21
     buffer_distance = None # Currently Not Working
@@ -221,5 +230,6 @@ if __name__ == "__main__":
     zip_zoom_level = 13
     out_manifest= True
     threads = 32
-    tile_downloader(api_key, in_geojson, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
+
+    tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
                     zip_zoom_level, threads)
