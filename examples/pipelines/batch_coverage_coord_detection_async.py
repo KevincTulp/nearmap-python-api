@@ -118,7 +118,7 @@ async def worker(name, url, api_key, in_csv, fid_name, lat_name, lon_name, skip_
                                 AI_capture_date_list = []
                                 if surveys:
                                     for i in list(range(0, num_surveys)):
-                                        if 'predictionAttributes' in surveys[i].get('resources').keys():
+                                        if 'aifeatures' in surveys[i].get('resources').keys():
                                             AI_capture_date_list.append(surveys[i].get('captureDate'))
                                         else:
                                             pass
