@@ -76,6 +76,12 @@ def georeference_tile(in_file, out_file, x, y, zoom):
     Translate(out_file, in_file, outputSRS='EPSG:4326', outputBounds=bounds)
 
 
+def _create_folder(folder):
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
 def zip_files(in_file_list, processing_folder, out_file_name):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
@@ -93,12 +99,12 @@ def zip_dir(source, destination):
     file_format = base.suffix.strip(".")
     archive_from = Path(source).parents[0]
     archive_to = Path(source).name
-    #print(source, destination, archive_from, archive_to)
+    print(source, destination, archive_from, archive_to)
     make_archive(name, file_format, archive_from, archive_to)
-    move(base.name, base.parents[0])
+    #move(base.name, base.parents)
 
 
-def download_tiles(in_params, out_manifest):
+def _download_tiles(in_params, out_manifest):
     url = in_params.get('url')
     path = in_params.get('path')
     fid = in_params.get('id')
@@ -127,13 +133,39 @@ def download_tiles(in_params, out_manifest):
         return m
 
 
+def _process_tiles(api_key, project_folder, tiles_folder, zzl, zip_d, out_manifest, num_threads):
+    fid = 0
+    jobs = []
+    scratch_folder = f'{tiles_folder}/{zzl}'
+    _create_folder(scratch_folder)
+    with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
+        for t in zip_d.get(zzl):
+            url = f'https://api.nearmap.com/tiles/v3/Vert/{t.z}/{t.x}/{t.y}.img?apikey={api_key}'
+            path = f'{scratch_folder}\\{t.x}_{t.y}_{t.z}.img'
+            temp = dict()
+            temp['id'] = fid
+            temp['url'] = url
+            temp['path'] = path
+            temp['x'] = t.x
+            temp['y'] = t.y
+            temp['zoom'] = t.z
+            temp['zip_zoom'] = zzl
+            jobs.append(executor.submit(_download_tiles, temp, out_manifest))
+            fid += 1
+    # TODO: Zip the tiles that were downloaded.
+    results = []
+    for job in jobs:
+        result = job.result()
+        results.append(result)
+    # time.sleep(0.5)
+    zip_dir(scratch_folder, f'{project_folder}\\{zzl}.zip')
+    # zip_files(in_file_list=results, processing_folder=scratch_folder, out_file_name=f"{zzl}.zip")
+    #rmtree(scratch_folder)
+    return results
+
+
 def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
                     zip_zoom_level, threads):
-
-    def _create_folder(folder):
-        folder = Path(folder)
-        folder.mkdir(parents=True, exist_ok=True)
-        return folder
 
     files = tqdm(list(Path(input_dir).iterdir()))
     in_geojson = None
@@ -181,35 +213,6 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
         fid = 0
         time.sleep(0.1)  # Sleep Temporarily to ensure previous stats are printed
 
-        def make_money(api_key, project_folder, tiles_folder, zzl, zip_d, out_manifest, num_threads):
-            fid = 0
-            jobs = []
-            scratch_folder = f'{tiles_folder}/{zzl}'
-            _create_folder(scratch_folder)
-            with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
-                for t in zip_d.get(zzl):
-                    url = f'https://api.nearmap.com/tiles/v3/Vert/{t.z}/{t.x}/{t.y}.img?apikey={api_key}'
-                    path = f'{scratch_folder}\\{t.x}_{t.y}_{t.z}.img'
-                    temp = dict()
-                    temp['id'] = fid
-                    temp['url'] = url
-                    temp['path'] = path
-                    temp['x'] = t.x
-                    temp['y'] = t.y
-                    temp['zoom'] = t.z
-                    temp['zip_zoom'] = zzl
-                    jobs.append(executor.submit(download_tiles, temp, out_manifest))
-                    fid += 1
-            # TODO: Zip the tiles that were downloaded.
-            results = []
-            for job in jobs:
-                result = job.result()
-                results.append(result)
-            # time.sleep(0.5)
-            zip_dir(scratch_folder, f'{project_folder}\\{zzl}.zip')
-            # zip_files(in_file_list=results, processing_folder=scratch_folder, out_file_name=f"{zzl}.zip")
-            rmtree(scratch_folder)
-            return results
         num_threads = None
         sub_threads = None
         print(f'Threads: {threads} | zip_d: {len(zip_d)}')
@@ -226,14 +229,14 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
         with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
             jobs = []
             for zzl in zip_d:
-                jobs.append(executor.submit(make_money, api_key, project_folder, tiles_folder, zzl, zip_d,
+                jobs.append(executor.submit(_process_tiles, api_key, project_folder, tiles_folder, zzl, zip_d,
                                             out_manifest, sub_threads))
             #results = []
             for job in jobs:
                 result = job.result()
                 #results.append(result)
                 r_tiles.extend(result)
-        print(r_tiles)
+
         te = time.time()
         files.set_postfix({'status' : f'Downloaded and Zipped Tiles in {te - ts} seconds'});
         del zip_d
@@ -271,7 +274,7 @@ if __name__ == "__main__":
     zip_tiles = True # Attributes grid with necessary values for zipping using zipper.py
     zip_zoom_level = 13
     out_manifest= True
-    threads = 400
+    threads = 100
 
     tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, zip_tiles,
                     zip_zoom_level, threads)
