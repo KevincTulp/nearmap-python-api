@@ -168,9 +168,9 @@ def zip_dir(source, destination):
     file_format = base.suffix.strip(".")
     archive_from = Path(source).parents[0]
     archive_to = Path(source).name
-    print(source, destination, archive_from, archive_to)
+    #print(source, destination, archive_from, archive_to)
     make_archive(name, file_format, archive_from, archive_to)
-    print(base.name, base.parents)
+    #print(base.name, base.parents)
     move(base.name, base.parents[0].as_posix())
 
 
@@ -302,33 +302,32 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
             max_cores = system_cores
         num_cores = None
         num_threads = None
-        print(f'Threads: {max_threads} | zip_d: {len(zip_d)}')
+        #print(f'Threads: {max_threads} | zip_d: {len(zip_d)}')
         if len(zip_d) > max_cores:
             num_cores = max_cores
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
                 num_threads = 5
-            print(f"Processing tiles on {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core")
+            files.set_postfix({'status': f'Downloading Tiles using {num_cores} Cores & {num_threads} Threads Per Core'})
         else:
             num_cores = len(zip_d)
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
                 num_threads = ceil((system_cores * 5) / num_cores)
-            print(f"Processing tiles on {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core")
-
+            files.set_postfix({'status': f'Processing tiles using {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core'})
         with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
-            jobs = []
-            for zzl in zip_d:
-                jobs.append(executor.submit(_process_tiles, api_key, project_folder, tiles_folder, zzl, zip_d,
-                                            out_format, out_manifest, num_threads))
-            # results = []
-            for job in jobs:
-                result = job.result()
-                # results.append(result)
-                r_tiles.extend(result)
-
+            with tqdm(total=len(zip_d)) as progress:
+                jobs = []
+                for zzl in zip_d:
+                    jobs.append(executor.submit(_process_tiles, api_key, project_folder, tiles_folder, zzl, zip_d,
+                                                out_format, out_manifest, num_threads))
+                # results = []
+                for job in jobs:
+                    result = job.result()
+                    r_tiles.extend(result)
+                    progress.update(1)
         te = time.time()
         files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'});
         del zip_d
@@ -360,7 +359,7 @@ if __name__ == "__main__":
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\output'
+    output_dir = r'C:\output'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
@@ -368,4 +367,5 @@ if __name__ == "__main__":
     group_zoom_level = 13
     out_manifest = True
 
-    tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_format, group_zoom_level)
+    tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_format,
+                    group_zoom_level)
