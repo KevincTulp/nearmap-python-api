@@ -327,7 +327,7 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
                 for job in jobs:
                     result = job.result()
                     r_tiles.extend(result)
-                    progress.update(1)
+                    progress.update()
         te = time.time()
         files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'});
         del zip_d
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output'
+    output_dir = r'C:\output2'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
