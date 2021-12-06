@@ -1,5 +1,6 @@
 from nearmap.auth import get_api_key
 from nearmap._api import _get_image
+from nearmap import NEARMAP
 from pathlib import Path
 from osgeo.gdal import Translate
 from math import log, tan, radians, cos, atan, sinh, pi, degrees, floor, ceil
@@ -88,7 +89,7 @@ def _create_folder(folder):
     return folder
 
 
-def georeference_tiles(in_tiles, output_dir, scratch_dir, out_format, image_basename):
+def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -115,9 +116,9 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_format, image_base
         Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
         georeferenced_tiles.append(f_out)
 
-    def _merge_tiles(in_rasters, out_raster, out_format):
+    def _merge_tiles(in_rasters, out_raster, out_image_format):
         # Only options - GTiff (the default) or HFA (Erdas Imagine)
-        parameters = ['', '-o', out_raster, '-of', out_format, '-q'] + in_rasters
+        parameters = ['', '-o', out_raster, '-of', out_image_format, '-q'] + in_rasters
         gdal_merge.main(parameters)
         return out_raster
 
@@ -126,10 +127,10 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_format, image_base
                'jpg': {'gdal_name': 'JPG'},
                'png': {'gdal_name': 'PNG'}
                }
-    if out_format.lower() in ['tif', 'tiff', 'bil']:
+    if out_image_format.lower() in ['tif', 'tiff', 'bil']:
         _create_folder(output_dir)
-        out_raster = f'{output_dir}\\{image_basename}.{out_format}'
-        raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_format).get('gdal_name'))
+        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
+        raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_image_format).get('gdal_name'))
         rmtree(scratch_dir_georeg)
         return raster
     else:
@@ -137,7 +138,7 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_format, image_base
         _create_folder(scratch_tif_dir)
         out_raster = f'{scratch_tif_dir}\\{image_basename}.tif'
         in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
-        out_raster = f'{output_dir}\\{image_basename}.{out_format}'
+        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
         _create_folder(output_dir)
         raster = Translate(out_raster, in_raster)
         rmtree(scratch_dir_georeg)
@@ -203,15 +204,31 @@ def _download_tiles(in_params, out_manifest):
         return m
 
 
-def _process_tiles(api_key, project_folder, tiles_folder, zzl, zip_d, out_format, out_manifest, num_threads):
+def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_format, out_manifest, num_threads,
+                   surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
     fid = 0
     jobs = []
     zzl_tiles_folder = f'{tiles_folder}/{zzl}'
     _create_folder(zzl_tiles_folder)
+
+    api_key = nearmap.api_key
+    out_format = 'img'
+    if surveyid:
+        contentType = tileResourceType
+        url_template = nearmap.tileSurveyV3(surveyid, contentType, z=0, x=0, y=2, out_format=out_format,
+                                            out_image='.img', rate_limit_mode="slow", return_url=True)
+    if not surveyid:
+        url_template = nearmap.tileV3(tileResourceType=tileResourceType, z=0, x=1, y=2, out_format=out_format,
+                                     out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
+                                     include=include, exclude=exclude, rate_limit_mode=rate_limit_mode, return_url=True)
+
     with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
         for t in zip_d.get(zzl):
-            url = f'https://api.nearmap.com/tiles/v3/Vert/{t.z}/{t.x}/{t.y}.img?apikey={api_key}'
+            z = t.z
+            x = t.x
+            y = t.y
             path = f'{zzl_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
+            url = eval(url_template)
             temp = dict()
             temp['id'] = fid
             temp['url'] = url
@@ -228,23 +245,26 @@ def _process_tiles(api_key, project_folder, tiles_folder, zzl, zip_d, out_format
         result = job.result()
         results.append(result)
     # time.sleep(0.5)
-    if out_format.lower() == 'zip':
+    if out_image_format.lower() == 'zip':
         zip_dir(zzl_tiles_folder, f'{project_folder}/{zzl}.zip')
         #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
         rmtree(zzl_tiles_folder)
-    elif out_format is None:
+    elif out_image_format is None:
         pass
     else:
         zzl_scratch_folder = f'{tiles_folder}/scratch_{zzl}'
         _create_folder(zzl_scratch_folder)
-        georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_format, image_basename=zzl)
+        georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_image_format, image_basename=zzl)
         rmtree(zzl_tiles_folder)
         rmtree(zzl_scratch_folder)
     return results
 
 
-def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_format,
-                    group_zoom_level, max_cores=None, max_threads=None):
+def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
+                    group_zoom_level, surveyid=None, tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None,
+                    include=None, exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
+
+    group_zoom_level
     files = tqdm(list(Path(input_dir).iterdir()))
     in_geojson = None
     for file in files:
@@ -317,12 +337,14 @@ def tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_d
             else:
                 num_threads = ceil((system_cores * 5) / num_cores)
             files.set_postfix({'status': f'Processing tiles using {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core'})
+
         with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
             with tqdm(total=len(zip_d)) as progress:
                 jobs = []
                 for zzl in zip_d:
-                    jobs.append(executor.submit(_process_tiles, api_key, project_folder, tiles_folder, zzl, zip_d,
-                                                out_format, out_manifest, num_threads))
+                    jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, zzl, zip_d,
+                                                out_image_format, out_manifest, num_threads, surveyid, tileResourceType,
+                                                tertiary, since, until, mosaic, include, exclude, rate_limit_mode))
                 # results = []
                 for job in jobs:
                     result = job.result()
@@ -355,17 +377,33 @@ if __name__ == "__main__":
 
     # Connect to the Nearmap API for Python
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
+    nearmap = NEARMAP(api_key)
 
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output2'
+    output_dir = r'C:\output3'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
-    out_format = 'zip' #'tif'  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'jpg' #'tif'  # Attributes grid with necessary values for zipping using zipper.py
     group_zoom_level = 13
     out_manifest = True
 
-    tile_downloader(api_key, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_format,
-                    group_zoom_level)
+    ###############################
+    # Survey Specific User Params
+    #############################
+
+    surveyid = None # Optional for calling a spefic survey...
+    tileResourceType = 'Vert' # Currently only 'Vert' and 'North' are supported
+    tertiary = None
+    since = None
+    until = None
+    mosaic = None
+    include = None
+    exclude = None
+    rate_limit_mode = 'slow'
+
+    tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
+                    group_zoom_level, surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude,
+                    rate_limit_mode)
