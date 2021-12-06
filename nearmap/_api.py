@@ -56,9 +56,21 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
     assert out_format in img_formats, f"Error, output image format must be a member of {','.join(img_formats)}"
     assert out_image, "error: Output Image File Path or Bytes flag undefined."
 
-    image = _image_get_op(url, out_format, out_image)
+    image = None
+    iter = 1
+    while not image:
+        try:
+            image = _image_get_op(url, out_format, out_image)
+        except ConnectionError as e:
+            backoff_time = iter * 0.03
+            if backoff_time >= 1800:
+                time.sleep(backoff_time)
+                iter = 1
+            time.sleep(backoff_time)
+            iter += 1
     response_code = image.status_code
     if response_code != 200:
+        #pass
         print(_http_response_error_reporting(response_code))
 
     # Begin Rate Limiting if response = 429
