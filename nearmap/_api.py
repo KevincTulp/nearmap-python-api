@@ -45,12 +45,25 @@ def _download_file(url, out_file):
 def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
 
     def _image_get_op(url, out_format, out_image):
+        iter = 1
         if out_image.lower() == "bytes":
             return get(url, stream=True)
         else:
             assert out_image.endswith(
                 out_format), f"Error, output image {out_image} does not end with format {out_format}"
-            return get(url, allow_redirects=True)
+            data = None
+            while data is None:
+                try:
+                    data = get(url, allow_redirects=True)
+                    return data
+                    #return get(url, allow_redirects=True)
+                except (ConnectionError, ConnectionResetError) as e:
+                    backoff_time = iter * 0.03
+                    if backoff_time >= 1800:
+                        time.sleep(backoff_time)
+                        iter = 1
+                    time.sleep(backoff_time)
+                    iter += 1
 
     img_formats = ["jpg", "png", "img"]
     assert out_format in img_formats, f"Error, output image format must be a member of {','.join(img_formats)}"
@@ -58,16 +71,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
 
     image = None
     iter = 1
-    while not image:
-        try:
-            image = _image_get_op(url, out_format, out_image)
-        except ConnectionError as e:
-            backoff_time = iter * 0.03
-            if backoff_time >= 1800:
-                time.sleep(backoff_time)
-                iter = 1
-            time.sleep(backoff_time)
-            iter += 1
+    image = _image_get_op(url, out_format, out_image)
     response_code = image.status_code
     if response_code != 200:
         #pass
