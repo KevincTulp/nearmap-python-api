@@ -81,7 +81,7 @@ def attribute_parcels(project_dir, unique_fid, features_of_interest):
 
 if __name__ == "__main__":
 
-    project_dir = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project'
+    project_dir = r''
     unique_fid = 'parcel_id'
     features_of_interest = ['swimming_pool']
 
