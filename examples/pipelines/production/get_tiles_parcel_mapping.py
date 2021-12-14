@@ -18,7 +18,7 @@ from tqdm import tqdm
 import time
 import os
 from os import cpu_count
-from osgeo.gdal import Translate
+from osgeo import gdal
 try:
     from osgeo_utils import gdal_merge
 except ImportError:
@@ -28,6 +28,9 @@ try:
     from ujson import load, dump, dumps
 except ModuleNotFoundError:
     from json import load, dump, dumps
+
+gdal.UseExceptions()
+gdal.PushErrorHandler('CPLQuietErrorHandler')
 
 
 def sec(x):
@@ -80,7 +83,7 @@ def tile_edges(x, y, z):
 def georeference_tile(in_file, out_file, x, y, zoom):
     bounds = tile_edges(x, y, zoom)
     # filename, extension = os.path.splitext(path)
-    Translate(out_file, in_file, outputSRS='EPSG:4326', outputBounds=bounds)
+    gdal.Translate(out_file, in_file, outputSRS='EPSG:4326', outputBounds=bounds)
 
 
 def _create_folder(folder):
@@ -110,11 +113,13 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
 
     georeferenced_tiles = []
     for f in tile_list:
-        x, y, z = f.stem.split("_")
-        bounds = tile_edges(int(x), int(y), int(z))
-        f_out = f'{scratch_dir_georeg}\\{f.name}'
-        Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
-        georeferenced_tiles.append(f_out)
+        if Path(f).is_file():
+            x, y, z = f.stem.split("_")
+            bounds = tile_edges(int(x), int(y), int(z))
+            f_out = f'{scratch_dir_georeg}\\{f.name}'
+            Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+            if Path(f_out).is_file():
+                georeferenced_tiles.append(Path(f_out).resolve().as_posix())
 
     def _merge_tiles(in_rasters, out_raster, out_image_format):
         # Only options - GTiff (the default) or HFA (Erdas Imagine)
@@ -131,19 +136,24 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
         _create_folder(output_dir)
         out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
         raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_image_format).get('gdal_name'))
-        rmtree(scratch_dir_georeg)
+        rmtree(scratch_dir_georeg, ignore_errors=True)
         return raster
     else:
         scratch_tif_dir = f'{scratch_dir}\\scratch_tif'
         _create_folder(scratch_tif_dir)
         out_raster = f'{scratch_tif_dir}\\{image_basename}.tif'
-        in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
-        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
-        _create_folder(output_dir)
-        raster = Translate(out_raster, in_raster)
-        rmtree(scratch_dir_georeg)
-        rmtree(scratch_tif_dir)
-        return raster
+        try:
+            in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
+            out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
+            _create_folder(output_dir)
+            raster = Translate(out_raster, in_raster)
+            rmtree(scratch_dir_georeg, ignore_errors=True)
+            rmtree(scratch_tif_dir, ignore_errors=True)
+            return raster
+        except Exception as e:
+            print(f'error: {image_basename} failed to merge | {e}')
+            rmtree(scratch_dir_georeg, ignore_errors=True)
+            return None
 
 
 def zip_files(in_file_list, processing_folder, out_file_name):
@@ -177,11 +187,10 @@ def zip_dir(source, destination):
 
 def _download_tiles(in_params, fid, out_manifest):
     url = in_params.get('url')
-    path = in_params.get('path')
+    path = Path(in_params.get('path')).resolve().as_posix()
     unique_id = in_params.get('id')
     fid_value = in_params.get(fid)
     ext = Path(path).suffix.replace(".", "")
-    # print(url, ext, path)
     image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow")
     if not out_manifest:
         m = dict()
@@ -205,62 +214,104 @@ def _download_tiles(in_params, fid, out_manifest):
         m['file'] = image
         return m
 
+def _return_existing(in_params, image, fid, out_manifest):
+    url = in_params.get('url')
+    path = in_params.get('path')
+    unique_id = in_params.get('id')
+    fid_value = in_params.get(fid)
+    ext = Path(path).suffix.replace(".", "")
+    if not out_manifest:
+        m = dict()
+        m['id'] = unique_id
+        m[fid] = fid_value
+        m['file'] = image
+        return m
+    if out_manifest:
+        x = in_params.get('x')
+        y = in_params.get('y')
+        z = in_params.get('zoom')
+        bounds = Polygon(gdal.Info(image, format='json').get('wgs84Extent').get('coordinates')[0])
+        m = dict()
+        m['geometry'] = bounds
+        m['id'] = unique_id
+        m[fid] = fid_value
+        m['x'] = in_params.get('x')
+        m['y'] = in_params.get('y')
+        m['zoom'] = in_params.get('zoom')
+        m['success'] = True
+        m['file'] = image
+        return m
+
 
 def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, out_manifest, num_threads,
                    surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
-    jobs = []
-    id = feature.get('id')
     fid_value = feature.get(fid)
-    my_tiles_folder = f'{tiles_folder}/{fid_value}'
-    _create_folder(my_tiles_folder)
-
-    api_key = nearmap.api_key
-    out_format = 'img'
-    if surveyid:
-        contentType = tileResourceType
-        url_template = nearmap.tileSurveyV3(surveyid, contentType, z=0, x=0, y=2, out_format=out_format,
-                                            out_image='.img', rate_limit_mode="slow", return_url=True)
-    if not surveyid:
-        url_template = nearmap.tileV3(tileResourceType=tileResourceType, z=0, x=1, y=2, out_format=out_format,
-                                     out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
-                                     include=include, exclude=exclude, rate_limit_mode=rate_limit_mode, return_url=True)
-
-    with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
-        for t in feature.get('tiles'):
-            z = t.z
-            x = t.x
-            y = t.y
-            path = f'{my_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
-            url = eval(url_template)
-            temp = dict()
-            temp['id'] = id
-            temp[fid] = fid_value
-            temp['url'] = url
-            temp['path'] = path
-            temp['x'] = t.x
-            temp['y'] = t.y
-            temp['zoom'] = t.z
-            jobs.append(executor.submit(_download_tiles, temp, fid, out_manifest))
-
-    # TODO: Zip the tiles that were downloaded.
-    results = []
-    for job in jobs:
-        result = job.result()
-        results.append(result)
-    # time.sleep(0.5)
-    if out_image_format.lower() == 'zip':
-        zip_dir(my_tiles_folder, f'{project_folder}/{fid_value}.zip')
-        #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
-        rmtree(my_tiles_folder)
-    elif out_image_format is None:
-        pass
+    id = feature.get('id')
+    out_raster = f'{project_folder}\\{fid_value}.{out_image_format}'
+    if Path(out_raster).is_file():
+        temp = dict()
+        temp['id'] = id
+        temp[fid] = fid_value
+        temp['url'] = None
+        temp['path'] = out_raster
+        temp['x'] = 0
+        temp['y'] = 0
+        temp['zoom'] = 0
+        results = _return_existing(temp, out_raster, fid, out_manifest)
+        return [results]
     else:
-        my_scratch_folder = f'{tiles_folder}/scratch_{fid_value}'
-        _create_folder(my_scratch_folder)
-        georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format, image_basename=fid_value)
-        rmtree(my_tiles_folder)
-        rmtree(my_scratch_folder)
-    return results
+        jobs = []
+        my_tiles_folder = f'{tiles_folder}/{fid_value}'
+        _create_folder(my_tiles_folder)
+        api_key = nearmap.api_key
+        out_format = 'img'
+        if surveyid:
+            contentType = tileResourceType
+            url_template = nearmap.tileSurveyV3(surveyid, contentType, z=0, x=0, y=2, out_format=out_format,
+                                                out_image='.img', rate_limit_mode="slow", return_url=True)
+        if not surveyid:
+            url_template = nearmap.tileV3(tileResourceType=tileResourceType, z=0, x=1, y=2, out_format=out_format,
+                                         out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
+                                         include=include, exclude=exclude, rate_limit_mode=rate_limit_mode,
+                                          return_url=True)
+
+        with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
+            for t in feature.get('tiles'):
+                z = t.z
+                x = t.x
+                y = t.y
+                path = f'{my_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
+                url = eval(url_template)
+                temp = dict()
+                temp['id'] = id
+                temp[fid] = fid_value
+                temp['url'] = url
+                temp['path'] = path
+                temp['x'] = t.x
+                temp['y'] = t.y
+                temp['zoom'] = t.z
+                jobs.append(executor.submit(_download_tiles, temp, fid, out_manifest))
+
+        # TODO: Zip the tiles that were downloaded.
+        results = []
+        for job in jobs:
+            result = job.result()
+            results.append(result)
+        # time.sleep(0.5)
+        if out_image_format.lower() == 'zip':
+            zip_dir(my_tiles_folder, f'{project_folder}\\{fid_value}.zip')
+            #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
+            rmtree(my_tiles_folder, ignore_errors=True)
+        elif out_image_format is None:
+            pass
+        else:
+            my_scratch_folder = f'{tiles_folder}\\scratch_{fid_value}'
+            _create_folder(my_scratch_folder)
+            georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format,
+                               image_basename=fid_value)
+            rmtree(my_tiles_folder, ignore_errors=True)
+            rmtree(my_scratch_folder, ignore_errors=True)
+        return results
 
 
 def geom_bounds_poly(in_geom):
@@ -294,6 +345,7 @@ def tile_downloader(nearmap, input_geojson, fid, output_dir, out_manifest, zoom,
             geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
             if buffer_distance:
                 geom = geom.buffer(buffer_distance, cap_style=3, join_style=2)
+
             geom_type = geom.geom_type
             if geom_type == 'MultiPolygon':
                 g_list = list()
@@ -406,7 +458,7 @@ def tile_downloader(nearmap, input_geojson, fid, output_dir, out_manifest, zoom,
         te = time.time()
         print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
 
-    rmtree(tiles_folder)
+    rmtree(tiles_folder, ignore_errors=True)
     end = time.time()  # End Clocking
     print({'status': f"Processed in {end - start} seconds"})
 
@@ -420,9 +472,13 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     nearmap = NEARMAP(api_key)
 
-    input_geojson = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\nearmap\unit_tests\TestData\Parcels_Vector\JSON\Parcels.geojson'
-    fid = 'FID' # Unique Feature ID for downloading/processing
-    output_dir = r'C:\output'
+    #input_geojson = r'..\\..\\..\\nearmap\\unit_tests\\TestData\\Parcels_Vector\\JSON\\Parcels.geojson'
+    #input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\parcels_with_ai\farmers_parcels_pt2_includes.geojson'
+    input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\processed\farmers_parcels_pt1_features.geojson'
+    #fid = 'FID' # Unique Feature ID for downloading/processing
+    fid = 'parcel_id'
+    output_dir = r'C:\output_pools_pt1'
+    #output_dir = r'C:\farmers_parcels_imagery_pt1'
     zoom = 21 # Nearmap imagery zoom level
     download_method = 'bounds' # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 1  # Buffer Distance in Meters
