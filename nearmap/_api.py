@@ -124,8 +124,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
             path = f'{base_path}.jpg'
         elif image_format != "jpeg":
             path = f'{base_path}.png'
-        source_format = Path(out_image)
-        out_image
+        #source_format = Path(out_image)
         open(path, 'wb').write(image.content)
         return path
 
