@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     from json import load, dump, dumps
 
-gdal.UseExceptions()
+#gdal.UseExceptions()
 gdal.PushErrorHandler('CPLQuietErrorHandler')
 
 
