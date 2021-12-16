@@ -355,7 +355,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
             for i in tqdm(src):
                 v = i.get('properties').get(fid)
                 if v in l:
-                    print(f"Error: Duplicate FID's detected in '{fid}'. Resolve before processing or script will fail")
+                    print({'status': f"Error: Duplicate FID's detected in '{fid}'. Resolve before processing or script will fail"})
                     exit()
                 l.append(v)
 
@@ -371,7 +371,6 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
     with fiona.open(input_geojson) as src:
         l = list()
         num_records = len(list(src))
-        #print(f'Number of Records: {num_records}')
         for rec in tqdm(src, desc="Preparing Records for Processing..."):
             feature = dict()
             tiles = []
@@ -436,8 +435,9 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                 count += 1
                 features.append(feature)
                 del feature, tiles
+        print({'status': f'Processing {len(l)} of {num_records} Records | Skipping {num_records-len(l)} "{fid}" duplicates'})
         del l
-    exit()
+
     te = time.time()
     ts = time.time()
     r_tiles = []
@@ -446,10 +446,10 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
     system_cores = cpu_count()
     if max_cores:
         if max_cores > system_cores:
-            print(f"User Input {max_cores} 'max_cores' > system cpu cores. Reverting to {system_cores} 'max_cores'")
+            print({'status': f"User Input {max_cores} 'max_cores' > system cpu cores. Reverting to {system_cores} 'max_cores'"})
             max_cores = system_cores
         elif max_cores < system_cores:
-            print(f"User Input {max_cores} 'max_cores' < {system_cores} available system cpu cores... continuing process")
+            print({'status': f"User Input {max_cores} 'max_cores' < {system_cores} available system cpu cores... continuing process"})
     else:
         max_cores = system_cores
     num_cores = None
