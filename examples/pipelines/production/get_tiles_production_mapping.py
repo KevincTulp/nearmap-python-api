@@ -229,6 +229,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
             y = t.y
             path = f'{zzl_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
             url = eval(url_template)
+            print(url)
             temp = dict()
             temp['id'] = fid
             temp['url'] = url
@@ -382,11 +383,11 @@ if __name__ == "__main__":
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output3'
+    output_dir = r'C:\output_tif'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
-    out_image_format = 'jpg' #'tif'  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'zip' #'tif' #'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     group_zoom_level = 13
     out_manifest = True
 
