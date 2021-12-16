@@ -348,6 +348,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                     rate_limit_mode="slow", max_cores=None, max_threads=None):
     from shapely.geometry import multipolygon, polygon
     assert Path(input_geojson).suffix == ".geojson", f"Error: 'input_geojson' {input_geojson} is not of type '.geojson'"
+
     if not skip_duplicate_fid:
         with fiona.open(input_geojson) as src:
             l = list()
@@ -357,6 +358,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                     print(f"Error: Duplicate FID's detected in '{fid}'. Resolve before processing or script will fail")
                     exit()
                 l.append(v)
+
     project_folder = f'{output_dir}'
     _create_folder(project_folder)
     tiles_folder = f'{project_folder}/tiles'
@@ -512,14 +514,10 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     nearmap = NEARMAP(api_key)
 
-    #input_geojson = r'..\\..\\..\\nearmap\\unit_tests\\TestData\\Parcels_Vector\\JSON\\Parcels.geojson'
-    #input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\parcels_with_ai\farmers_parcels_pt2_includes.geojson'
-    input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\processed\farmers_parcels_pt2_features.geojson'
-    #fid = 'FID' # Unique Feature ID for downloading/processing
-    fid = 'parcel_id'
+    input_geojson = r'..\\..\\..\\nearmap\\unit_tests\\TestData\\Parcels_Vector\\JSON\\Parcels.geojson'
+    fid = 'HCAD_NUM' # Unique Feature ID for downloading/processing
     skip_duplicate_fid = True
-    output_dir = r'C:\output_pools_pt2'
-    #output_dir = r'C:\farmers_parcels_imagery_pt1'
+    output_dir = r'C:\output_test'
     zoom = 21 # Nearmap imagery zoom level
     download_method = 'bounds' # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 1  # Buffer Distance in Meters
