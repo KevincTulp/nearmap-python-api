@@ -17,6 +17,7 @@ from shutil import rmtree, make_archive, move
 from tqdm import tqdm
 import time
 import os
+import sys
 from os import cpu_count
 from osgeo import gdal
 try:
@@ -92,6 +93,13 @@ def _create_folder(folder):
     return folder
 
 
+def _exception_info():
+    exception_type, exception_object, exception_traceback = sys.exc_info()
+    filename = exception_traceback.tb_frame.f_code.co_filename
+    line_number = exception_traceback.tb_lineno
+    return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
+
+
 def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename):
     tile_list = None
     tile_dir = None
@@ -117,7 +125,10 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             x, y, z = f.stem.split("_")
             bounds = tile_edges(int(x), int(y), int(z))
             f_out = f'{scratch_dir_georeg}\\{f.name}'
-            Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+            try:
+                Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+            except Exception as e:
+                print(f'error: {image_basename} | failed to translate | {e} | {_exception_info()}')
             if Path(f_out).is_file():
                 georeferenced_tiles.append(Path(f_out).resolve().as_posix())
 
@@ -151,7 +162,7 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             rmtree(scratch_tif_dir, ignore_errors=True)
             return raster
         except Exception as e:
-            print(f'error: {image_basename} failed to merge | {e}')
+            print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
             rmtree(scratch_dir_georeg, ignore_errors=True)
             return None
 
@@ -191,7 +202,15 @@ def _download_tiles(in_params, fid, out_manifest):
     unique_id = in_params.get('id')
     fid_value = in_params.get(fid)
     ext = Path(path).suffix.replace(".", "")
-    image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow")
+    try:
+        image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow")
+    except Exception as e:
+        print(f"Error: Error downloading image for: {unique_id} | {fid_value} | {path} | {_exception_info()}")
+        image = None
+    if image is None:
+        print(f"Error: Error downloading image for: {unique_id} | {fid_value} | {path}")
+    elif not Path(image).is_file():
+        print(f"Error: Error with image path: {unique_id} | {fid_value} | {path}")
     if not out_manifest:
         m = dict()
         m['id'] = unique_id
@@ -230,7 +249,11 @@ def _return_existing(in_params, image, fid, out_manifest):
         x = in_params.get('x')
         y = in_params.get('y')
         z = in_params.get('zoom')
-        bounds = Polygon(gdal.Info(image, format='json').get('wgs84Extent').get('coordinates')[0])
+        try:
+            bounds = Polygon(gdal.Info(image, format='json').get('wgs84Extent').get('coordinates')[0])
+        except Exception as e:
+            print(f"error: {fid_value} | {e} | {_exception_info()}")
+            bounds = Polygon([[0,0], [0,1], [1,1], [1,0],[0,0]])
         m = dict()
         m['geometry'] = bounds
         m['id'] = unique_id
@@ -246,11 +269,11 @@ def _return_existing(in_params, image, fid, out_manifest):
 def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, out_manifest, num_threads,
                    surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
     fid_value = feature.get(fid)
-    id = feature.get('id')
+    unique_id = feature.get('id')
     out_raster = f'{project_folder}\\{fid_value}.{out_image_format}'
     if Path(out_raster).is_file():
         temp = dict()
-        temp['id'] = id
+        temp['id'] = unique_id
         temp[fid] = fid_value
         temp['url'] = None
         temp['path'] = out_raster
@@ -283,7 +306,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
                 path = f'{my_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
                 url = eval(url_template)
                 temp = dict()
-                temp['id'] = id
+                temp['id'] = unique_id
                 temp[fid] = fid_value
                 temp['url'] = url
                 temp['path'] = path
@@ -319,12 +342,21 @@ def geom_bounds_poly(in_geom):
     return Polygon([[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin], [xmin, ymin]])
 
 
-def tile_downloader(nearmap, input_geojson, fid, output_dir, out_manifest, zoom, download_method, buffer_distance,
-                    remove_holes, out_image_format, surveyid=None, tileResourceType='Vert',
+def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method,
+                    buffer_distance, remove_holes, out_image_format, surveyid=None, tileResourceType='Vert',
                     tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None,
                     rate_limit_mode="slow", max_cores=None, max_threads=None):
     from shapely.geometry import multipolygon, polygon
     assert Path(input_geojson).suffix == ".geojson", f"Error: 'input_geojson' {input_geojson} is not of type '.geojson'"
+    if not skip_duplicate_fid:
+        with fiona.open(input_geojson) as src:
+            l = list()
+            for i in tqdm(src):
+                v = i.get('properties').get(fid)
+                if v in l:
+                    print(f"Error: Duplicate FID's detected in '{fid}'. Resolve before processing or script will fail")
+                    exit()
+                l.append(v)
     project_folder = f'{output_dir}'
     _create_folder(project_folder)
     tiles_folder = f'{project_folder}/tiles'
@@ -335,67 +367,75 @@ def tile_downloader(nearmap, input_geojson, fid, output_dir, out_manifest, zoom,
     count = 0
     features = list()
     with fiona.open(input_geojson) as src:
+        l = list()
         num_records = len(list(src))
         #print(f'Number of Records: {num_records}')
         for rec in tqdm(src, desc="Preparing Records for Processing..."):
             feature = dict()
             tiles = []
             feature['id'] = count
-            feature[fid] = rec.get('properties').get(fid)
-            geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
-            if buffer_distance:
-                geom = geom.buffer(buffer_distance, cap_style=3, join_style=2)
-
-            geom_type = geom.geom_type
-            if geom_type == 'MultiPolygon':
-                g_list = list()
-                if download_method.lower() == 'bounds':
-                    g_bounds = geom_bounds_poly(geom)
-                    tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_bounds, zoom)])
-                    feature['geom'] = g_bounds
-                    del g_bounds
-                elif download_method.lower() == 'bounds_per_feature':
-                    g_list = list()
-                    geoms = geom.geoms
-                    for g in geoms:
-                        g_bounds = geom_bounds_poly(g)
-                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_bounds, zoom)])
-                        g_list.append(g_bounds)
-                    feature['geom'] = MultiPolygon(geoms)
-                    del g_list
-                elif remove_holes:
-                    g_list = list()
-                    geoms = geom.geoms
-                    for g in geoms:
-                        g_ext = g.exterior
-                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_ext, zoom)])
-                        g_list.append(g_ext)
-                    feature['geom'] = MultiPolygon(geoms)
-                    del g_list
-                else: # If retain 'geometry'
-                    geoms = geom.geoms
-                    for g in geoms:
-                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g, zoom)])
-                    feature['geom'] = geom
-            elif geom_type == 'Polygon':
-                if download_method.lower() in ['bounds', 'bounds_per_feature']:
-                    tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, geom_bounds_poly(geom),
-                                                                                zoom)])
-                elif remove_holes:
-                    tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom.exterior),
-                                                                                zoom)])
-                else: # If retain 'geometry'
-                    tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom),
-                                                                                zoom)])
+            v = rec.get('properties').get(fid)
+            feature[fid] = v
+            if v in l:
+                pass
             else:
-                print(f'{geom_type} is currently not supported')
-                exit()
-            # Remove dupes if geoms overlapped.
-            tiles = list(set(tiles))
-            feature['tiles'] = tiles
-            count += 1
-            features.append(feature)
-            del feature, tiles
+                l.append(v)
+                geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                if buffer_distance:
+                    geom = geom.buffer(buffer_distance, cap_style=3, join_style=2)
+
+                geom_type = geom.geom_type
+                if geom_type == 'MultiPolygon':
+                    g_list = list()
+                    if download_method.lower() == 'bounds':
+                        g_bounds = geom_bounds_poly(geom)
+                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_bounds, zoom)])
+                        feature['geom'] = g_bounds
+                        del g_bounds
+                    elif download_method.lower() == 'bounds_per_feature':
+                        g_list = list()
+                        geoms = geom.geoms
+                        for g in geoms:
+                            g_bounds = geom_bounds_poly(g)
+                            tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_bounds, zoom)])
+                            g_list.append(g_bounds)
+                        feature['geom'] = MultiPolygon(geoms)
+                        del g_list
+                    elif remove_holes:
+                        g_list = list()
+                        geoms = geom.geoms
+                        for g in geoms:
+                            g_ext = g.exterior
+                            tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g_ext, zoom)])
+                            g_list.append(g_ext)
+                        feature['geom'] = MultiPolygon(geoms)
+                        del g_list
+                    else: # If retain 'geometry'
+                        geoms = geom.geoms
+                        for g in geoms:
+                            tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g, zoom)])
+                        feature['geom'] = geom
+                elif geom_type == 'Polygon':
+                    if download_method.lower() in ['bounds', 'bounds_per_feature']:
+                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, geom_bounds_poly(geom),
+                                                                                    zoom)])
+                    elif remove_holes:
+                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom.exterior),
+                                                                                    zoom)])
+                    else: # If retain 'geometry'
+                        tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom),
+                                                                                    zoom)])
+                else:
+                    print(f'{geom_type} is currently not supported')
+                    exit()
+                # Remove dupes if geoms overlapped.
+                tiles = list(set(tiles))
+                feature['tiles'] = tiles
+                count += 1
+                features.append(feature)
+                del feature, tiles
+        del l
+    exit()
     te = time.time()
     ts = time.time()
     r_tiles = []
@@ -474,10 +514,11 @@ if __name__ == "__main__":
 
     #input_geojson = r'..\\..\\..\\nearmap\\unit_tests\\TestData\\Parcels_Vector\\JSON\\Parcels.geojson'
     #input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\parcels_with_ai\farmers_parcels_pt2_includes.geojson'
-    input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\processed\farmers_parcels_pt1_features.geojson'
+    input_geojson = r'C:\Users\geoff.taylor\Dropbox (Nearmap)\Insurance\Farmers\pools_project\processed\farmers_parcels_pt2_features.geojson'
     #fid = 'FID' # Unique Feature ID for downloading/processing
     fid = 'parcel_id'
-    output_dir = r'C:\output_pools_pt1'
+    skip_duplicate_fid = True
+    output_dir = r'C:\output_pools_pt2'
     #output_dir = r'C:\farmers_parcels_imagery_pt1'
     zoom = 21 # Nearmap imagery zoom level
     download_method = 'bounds' # 'bounds', 'bounds_per_feature', or 'geometry'
@@ -500,6 +541,6 @@ if __name__ == "__main__":
     exclude = None
     rate_limit_mode = 'slow'
 
-    tile_downloader(nearmap, input_geojson, fid, output_dir, out_manifest, zoom, download_method, buffer_distance,
+    tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method, buffer_distance,
                     remove_holes, out_image_format, surveyid, tileResourceType, tertiary, since, until, mosaic, include,
                     exclude, rate_limit_mode)
