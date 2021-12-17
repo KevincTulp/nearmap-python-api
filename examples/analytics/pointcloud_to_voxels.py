@@ -6,6 +6,8 @@ from pathlib import Path
 
 def voxelize(input_point_cloud, voxel_size: float or None, output_mesh):
 
+    assert Path(input_point_cloud).is_file(), f"Error: Count not detect {input_point_cloud} in path specified"
+    assert Path(input_point_cloud).suffix.lower() in ['.las', '.zlas'], f"Error {input_point_cloud} file format not supported"
     point_cloud=lp.read(input_point_cloud)
 
     pcd = o3d.geometry.PointCloud()
