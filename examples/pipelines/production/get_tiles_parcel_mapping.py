@@ -2,12 +2,12 @@ from nearmap.auth import get_api_key
 from nearmap._api import _get_image
 from nearmap import NEARMAP
 from pathlib import Path
-from osgeo.gdal import Translate
 from math import log, tan, radians, cos, atan, sinh, pi, degrees, floor, ceil
 import fiona
 from fiona.transform import transform_geom
 from shapely.geometry import MultiPolygon, Polygon, box, shape
 from shapely import ops
+import pyproj
 import tiletanic
 import geopandas as gpd
 from collections import defaultdict
@@ -100,7 +100,7 @@ def _exception_info():
     return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
 
 
-def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename):
+def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename, geom):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -126,7 +126,7 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             bounds = tile_edges(int(x), int(y), int(z))
             f_out = f'{scratch_dir_georeg}\\{f.name}'
             try:
-                Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+                gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
             except Exception as e:
                 print(f'error: {image_basename} | failed to translate | {e} | {_exception_info()}')
             if Path(f_out).is_file():
@@ -157,7 +157,33 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
             out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
             _create_folder(output_dir)
-            raster = Translate(out_raster, in_raster)
+
+            processing_method = None
+
+            if processing_method in ["mask", "bounds"]:
+                wgs84 = pyproj.CRS('EPSG:4326')
+                wgs84_pseudo = pyproj.CRS('EPSG:3857')
+
+                project = pyproj.Transformer.from_crs(wgs84_pseudo, wgs84, always_xy=True).transform
+                wgs84_geom = ops.transform(project, geom)
+
+            if processing_method == "mask":
+                shp = shapely_polygon_to_shp(wgs84_geom, f'{scratch_tif_dir}\\{image_basename}.shp')
+
+                raster = gdal.Warp(out_raster, in_raster,
+                                   outputBounds=list(wgs84_geom.bounds),
+                                   outputBoundsSRS='EPSG:4326',
+                                   cutlineDSName=shp,
+                                   cropToCutline=True)
+
+            elif processing_method == "bounds":
+                raster = gdal.Warp(out_raster, in_raster,
+                                   outputBounds=list(wgs84_geom.bounds),
+                                   outputBoundsSRS='EPSG:4326')
+            else:
+                raster = gdal.Warp(out_raster, in_raster)
+
+            # raster = gdal.Translate(out_raster, in_raster)
             rmtree(scratch_dir_georeg, ignore_errors=True)
             rmtree(scratch_tif_dir, ignore_errors=True)
             return raster
@@ -165,6 +191,25 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
             rmtree(scratch_dir_georeg, ignore_errors=True)
             return None
+
+
+def shapely_polygon_to_shp(in_shapely_geom, out_shapefile):
+    from shapely.geometry import mapping, Polygon
+    import fiona
+
+    # Define a polygon feature geometry with one attribute
+    schema = {
+        'geometry': 'Polygon',
+        'properties': {'id': 'int'},
+    }
+
+    # Write a new Shapefile
+    with fiona.open(out_shapefile, 'w', 'ESRI Shapefile', schema) as c:
+        c.write({
+            'geometry': mapping(in_shapely_geom),
+            'properties': {'id': 1},
+        })
+    return out_shapefile
 
 
 def zip_files(in_file_list, processing_folder, out_file_name):
@@ -270,6 +315,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
                    surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
     fid_value = feature.get(fid)
     unique_id = feature.get('id')
+    geom = feature.get('geom')
     out_raster = f'{project_folder}\\{fid_value}.{out_image_format}'
     if Path(out_raster).is_file():
         temp = dict()
@@ -331,7 +377,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
             my_scratch_folder = f'{tiles_folder}\\scratch_{fid_value}'
             _create_folder(my_scratch_folder)
             georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format,
-                               image_basename=fid_value)
+                               image_basename=fid_value, geom=geom)
             rmtree(my_tiles_folder, ignore_errors=True)
             rmtree(my_scratch_folder, ignore_errors=True)
         return results
@@ -384,7 +430,6 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                 geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
                 if buffer_distance:
                     geom = geom.buffer(buffer_distance, cap_style=3, join_style=2)
-
                 geom_type = geom.geom_type
                 if geom_type == 'MultiPolygon':
                     g_list = list()
@@ -420,12 +465,15 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                     if download_method.lower() in ['bounds', 'bounds_per_feature']:
                         tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, geom_bounds_poly(geom),
                                                                                     zoom)])
+                        feature['geom'] = geom
                     elif remove_holes:
                         tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom.exterior),
                                                                                     zoom)])
+                        feature['geom'] = geom
                     else: # If retain 'geometry'
                         tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, Polygon(geom),
                                                                                     zoom)])
+                        feature['geom'] = geom
                 else:
                     print(f'{geom_type} is currently not supported')
                     exit()
@@ -499,6 +547,11 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
         result.to_file(f"{project_folder}\\manifest.geojson", driver='GeoJSON')
         te = time.time()
         print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
+        ts = time.time()
+        print({'status': 'Begin Exporting Result Extents to geojson file'})
+        result.dissolve(by=fid).to_file(f"{project_folder}\\manifest_extents.geojson", driver='GeoJSON')
+        te = time.time()
+        print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
 
     rmtree(tiles_folder, ignore_errors=True)
     end = time.time()  # End Clocking
@@ -520,7 +573,7 @@ if __name__ == "__main__":
     output_dir = r'C:\output_test'
     zoom = 21 # Nearmap imagery zoom level
     download_method = 'bounds' # 'bounds', 'bounds_per_feature', or 'geometry'
-    buffer_distance = 1  # Buffer Distance in Meters
+    buffer_distance = 0  # Buffer Distance in Meters
     remove_holes = True # Remove holes within polygons
     out_image_format = 'jpg' # supported: 'jpg', 'tif', 'png'
     out_manifest = True # Output a manifest of data extracted
