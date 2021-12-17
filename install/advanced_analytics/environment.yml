@@ -40,6 +40,7 @@ dependencies:
   - conda-forge::pdal              # PDAL Library (Point Data Abstraction Library)
   - conda-forge::python-pdal       # Python bindings for PDAL (Point Data Abstraction Library)
   - conda-forge::entwine           # data organization library for massive point clouds
+  - conda-forge::laspy             # Native Python ASPRS LAS read/write library
   - conda-forge::mamba             # Fast Cross-Platform Package Manager <-- Dependency for leafmap
   - conda-forge::leafmap           # A Python package for geospatial analysis and interactive mapping in a Jupyter environment
   - conda-forge::xarray_leaflet    # xarray & Leaflet fragments of data, xarray through Dask's chunks, and Leaflet through map tiles
