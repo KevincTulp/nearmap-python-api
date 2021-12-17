@@ -2,27 +2,38 @@ import laspy as lp
 import numpy as np
 import open3d as o3d
 from pathlib import Path
+import copy
 
 
-def voxelize(input_point_cloud, voxel_size: float or None, output_mesh):
+def voxelize(input_point_cloud, voxel_size: float or None, rotate_view, output_mesh):
 
     assert Path(input_point_cloud).is_file(), f"Error: Count not detect {input_point_cloud} in path specified"
     assert Path(input_point_cloud).suffix.lower() in ['.las', '.zlas'], f"Error {input_point_cloud} file format not supported"
     point_cloud=lp.read(input_point_cloud)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(np.vstack((point_cloud.x, point_cloud.y, point_cloud.z)).transpose())
-    pcd.colors = o3d.utility.Vector3dVector(np.vstack((point_cloud.red, point_cloud.green, point_cloud.blue)).transpose()/65535)
+    pcd_init = o3d.geometry.PointCloud()
+    pcd_init.points = o3d.utility.Vector3dVector(np.vstack((point_cloud.x, point_cloud.y, point_cloud.z)).transpose())
+    pcd_init.colors = o3d.utility.Vector3dVector(np.vstack((point_cloud.red, point_cloud.green, point_cloud.blue)).transpose()/65535)
+    R = pcd_init.get_rotation_matrix_from_zxy((np.pi / 2, 0, np.pi / 4))
+    pcd = pcd_init.rotate(R, center=(0,0,0))
 
     if not voxel_size or voxel_size <= 0:
         v_size = round(max(pcd.get_max_bound()-pcd.get_min_bound())*0.005,4)
     elif voxel_size:
         v_size = voxel_size
-    voxel_grid=o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,voxel_size=v_size)
 
     voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=v_size)
 
-    o3d.visualization.draw_geometries([voxel_grid])
+
+    def rotate_viewer(vis):
+        ctr = vis.get_view_control()
+        ctr.rotate(1.0, 0.0)
+        return False
+
+    if rotate_view:
+        o3d.visualization.draw_geometries_with_animation_callback([voxel_grid], rotate_viewer)
+    else:
+        o3d.visualization.draw_geometries([voxel_grid])
 
     voxels = voxel_grid.get_voxels()
 
@@ -69,9 +80,10 @@ if __name__ == "__main__":
     # User Inputs
     #############
     input_point_cloud = r'biltmore_house_las/PointCloud.las'  # Input las or laz PointCloud file
-    voxel_size = None # If None code will auto-determine. Integers ex: 0.45 are also supported
+    voxel_size = None # If None code will auto-determine. Integers ex: 0.4 are also supported
     output_mesh = None # r'mesh.ply' # Options include None or formats obj, ply, gltf, glb, off, and stl
+    rotate_view = False
 
     ###############
     # Begin Script
-    voxelize(input_point_cloud, voxel_size, output_mesh)
+    voxelize(input_point_cloud, voxel_size, rotate_view, output_mesh)
