@@ -401,7 +401,7 @@ def ortho_imagery_downloader(api_key, df_parcels, out_folder, out_format="tif", 
     tile_intervals = []
     if num_tiles > 20:
         tile_intervals = [i for i in range(0, num_tiles, int(num_tiles*.05))]
-    for row, column in df_parcels.iterrows():
+    for row, column in tqdm(df_parcels.iterrows(), total=df_parcels.shape[0]):
         if not column.geometry.is_empty:
             top_left_long_lat = list(df_parcels.tile[row].exterior.coords[0])
             bottom_right_long_lat = list(df_parcels.tile[row].exterior.coords[2])
