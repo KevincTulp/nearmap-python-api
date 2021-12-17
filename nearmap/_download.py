@@ -13,6 +13,7 @@ try:
 except ModuleNotFoundError:
     from json import dump, dumps
 
+from tqdm.auto import tqdm
 
 def process_payload(combined_dataframe, out_folder, out_format, save=True):
     """
@@ -174,7 +175,7 @@ def generate_ai_pack(base_url, api_key, df_parcels, out_folder, since=None, unti
     full_ai_df.set_geometry(col='geometry', inplace=True)
 
     # Specify the AI Packs. This list represents all AI Packs that are currently available.
-    for row, column in df_parcels.iterrows():
+    for row, column in tqdm(df_parcels.iterrows(), total=df_parcels.shape[0]):
         if not column.geometry.is_empty:
             # pull the shapely polygon from the current row of grid df
             poly_obj = df_parcels.loc[row, 'geometry']
