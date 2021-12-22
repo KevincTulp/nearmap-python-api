@@ -24,7 +24,7 @@ polygon = [-87.73101994900836, 41.79082699478777,
 
 since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
-packs = None  # Set to None for all packs otherwise type pack of interest name(s)
+packs = None  # "building" # Set to None for all packs otherwise type pack of interest name(s)
 
 ##########
 # Script
@@ -48,7 +48,22 @@ print(df)
 # Get AI Features as JSON
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format="json", lat_lon_direction="yx")
 print(dumps(my_ai_features, indent=4, sort_keys=True))
+print(my_ai_features)
 
 # Save AI features to JSON File
 with open('my_data.json', 'w', encoding='utf-8') as f:
     dump(my_ai_features, f, ensure_ascii=False, indent=4)
+
+'''
+# Get AI Features as geojson
+out_format = "test_file.geojson"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, lat_lon_direction="yx")
+
+# Get AI Features as geopackage
+out_format = "test_file.geopackage"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, lat_lon_direction="yx")
+
+# Get AI Features as shapefile
+out_format = "test_file.shp"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, lat_lon_direction="yx")
+'''
