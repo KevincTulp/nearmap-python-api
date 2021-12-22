@@ -15,9 +15,9 @@ from time import sleep
 from pathlib import Path
 
 try:
-    from ujson import loads
+    from ujson import loads, dumps
 except ModuleNotFoundError:
-    from json import loads
+    from json import loads, dumps
 
 
 def _format_polygon(polygon, lat_lon_direction):
@@ -266,14 +266,64 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
         url += f"&apikey={api_key}"
     else:
         url += "&apikey={api_key}"
+
+    supported_export_formats = ['.shp', '.geojson', '.gpkg']
+
     if out_format == "json":
         if not return_url:
             return get(url).json()
         elif return_url:
             return "f'" + url + "'"
-    elif out_format in ["pandas", "pd"]:
+    elif out_format in ["pandas", "pd", "geopandas", "gpd", "geojson"] or Path(out_format).suffix in supported_export_formats:
+        import geopandas as gpd
         import pandas as pd
-        return pd.read_json(url)["features"]
+        from shapely import geometry
+        my_json = get(url).json().get('features')
+
+        column_names = []
+        for f in my_json:
+            [column_names.append(i) for i in f.keys() if i not in column_names]
+
+        features_list = list()
+        for f in my_json:
+            temp_dict = dict()
+            temp_dict['geometry'] = geometry.shape(f.get('geometry'))
+            for k in f.keys():
+                if k in column_names:
+                    if k not in ['attributes', 'geometry', 'components']:
+                        temp_dict[k]=f.get(k)
+                    if 'attributes' in f.keys():
+                        attrs = f.get('attributes')
+                        if len(attrs) > 0:
+                            for attr_k in attrs[0].keys():
+                                if attr_k not in ['components']:
+                                    temp_dict[attr_k] = attrs[0].get(attr_k)
+                                if attr_k == 'components':
+                                    components = attrs[0].get(attr_k)
+                                    c_count = 0
+                                    for c in components:
+                                        for c_k in c.keys():
+                                            temp_dict[f"c{c_count}_{c_k}"] = components[c_count].get(c_k)
+                                        c_count += 1
+            print(temp_dict)
+            features_list.append(temp_dict)
+        gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
+
+        if out_format in ["pandas", "pd"]:
+            return pd.DataFrame(gdf)
+        if out_format in ["geopandas", "gpd"]:
+            return gdf
+        elif out_format == "geojson":
+            return gdf.to_json()
+        elif Path(out_format).suffix in supported_export_formats:
+            out_file_format = Path(out_format).suffix
+            if out_file_format == ".geojson":
+                gdf.to_file(out_format, driver='GeoJSON')
+            if out_file_format == ".shp":
+                gdf.to_file(out_format)
+            elif out_file_format == ".gpkg":
+                # TODO: Iterate through geodataframe, split by feature type and output separate layers
+                gdf.to_file(out_format, layers="ai_data", driver="GPKG")
     else:
         print(f"Error: output out_format {out_format} is not supported.")
         exit()
