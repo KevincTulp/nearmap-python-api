@@ -242,6 +242,10 @@ class NEARMAP(object):
                                        "json" - returns a json object (This is the default)
                                        "text" - returns a text object
                                        "pandas" - returns a pandas dataframe object
+                                       "geopandas" - returns a geopandas geodataframe object
+                                       "file_path.shp" - returns a shapefile
+                                       "file_path.geojson" - returns a geojson file
+                                       "file_path.gpkg" - returns a geopackage
                ---------------     --------------------------------------------------------------------
                lat_lon_direction   Optional string.  Reverses the ordering of the default point input parameter from lon/lat
                                    to lat/lon coords to support US and other nations using this ordering.
@@ -363,11 +367,13 @@ class NEARMAP(object):
                                 -If neither since nor until are specified, the request returns the latest ai
                                 data.
         ---------------     --------------------------------------------------------------------
-        packs               Optional string.    Input the name or list of names for the AI packs you want to download.
-                            Example: "Building Footprints"
+        packs               Optional string. Input the name or list of names for the AI packs you want to download.
+                            Example: "building"
 
                             If you are unsure what AI Packs you have access to with your nearmap subscription
                             use the nearmap.aiPacks() function to list them.
+
+                            ** Note: input string must be lowercase
 
                             More Information on AI Packs: https://docs.nearmap.com/display/ND/AI+Packs
         ---------------     --------------------------------------------------------------------
@@ -390,6 +396,7 @@ class NEARMAP(object):
         """
         return _api.aiFeaturesV4(self.base_url, self.api_key, polygon, since, until, packs, out_format,
                                  lat_lon_direction, surveyResourceID, return_url)
+
 
     def aiClassesV4(self, out_format="json", return_url=False):
         """
