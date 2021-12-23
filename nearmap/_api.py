@@ -318,7 +318,11 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                                     reverse=True))
                                     top_story = int(list(e.keys())[0].replace('+', ''))
                                     temp_dict['numStories'] = top_story
-                                    temp_dict['numStorConfidence'] = round(attrs[0].get(attr_k).get(f'{top_story}'), 3)
+                                    v = attrs[0].get(attr_k).get(f'{top_story}')
+                                    if v:
+                                        temp_dict['numStorConfidence'] = round(v, 3)
+                                    else:
+                                        temp_dict['numStorConfidence'] = None
             print(temp_dict)
             features_list.append(temp_dict)
         gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
