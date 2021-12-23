@@ -297,7 +297,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                         attrs = f.get('attributes')
                         if len(attrs) > 0:
                             for attr_k in attrs[0].keys():
-                                if attr_k not in ['components', "numStories"]:  # TODO deal with numStories
+                                if attr_k not in ['components', "numStories", "height", "confidence", "fidelity"]:  # TODO deal with numStories
                                     temp_dict[attr_k] = attrs[0].get(attr_k)
                                 if attr_k == 'components':
                                     components = attrs[0].get(attr_k)
@@ -306,11 +306,19 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                         for c_k in c.keys():
                                             temp_dict[f"c{c_count}_{c_k}"] = components[c_count].get(c_k)
                                         c_count += 1
+                                if attr_k == 'height':
+                                    temp_dict['heightMeters'] = round(attrs[0].get(attr_k), 3)
+                                    temp_dict['heightFeet'] = round(float(attrs[0].get(attr_k)) * 3.281, 3)
+                                if attr_k == 'confidence':
+                                    temp_dict[attr_k] = round(attrs[0].get(attr_k), 3)
+                                if attr_k == 'fidelity':
+                                    temp_dict[attr_k] = round(attrs[0].get(attr_k), 3)
                                 if attr_k == 'numStories':  # TODO: Deal With numStories
-                                    e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1], reverse=True))
+                                    e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1],
+                                                    reverse=True))
                                     top_story = int(list(e.keys())[0].replace('+', ''))
                                     temp_dict['numStories'] = top_story
-                                    temp_dict['numStorConfidence'] = attrs[0].get(attr_k).get(f'{top_story}')
+                                    temp_dict['numStorConfidence'] = round(attrs[0].get(attr_k).get(f'{top_story}'), 3)
             print(temp_dict)
             features_list.append(temp_dict)
         gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
