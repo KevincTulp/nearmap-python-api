@@ -291,13 +291,19 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             temp_dict['geometry'] = geometry.shape(f.get('geometry'))
             for k in f.keys():
                 if k in column_names:
-                    if k not in ['attributes', 'geometry', 'components']:
+                    if k not in ['attributes', 'geometry', 'components', 'confidence', 'fidelity']:
                         temp_dict[k] = f.get(k)
+                    if k in ['confidence', 'fidelity']:
+                        v = f.get(k)
+                        if v:
+                            temp_dict[k] = round(v, 3)
+                        else:
+                            temp_dict[k] = v
                     if 'attributes' in f.keys():
                         attrs = f.get('attributes')
                         if len(attrs) > 0:
                             for attr_k in attrs[0].keys():
-                                if attr_k not in ['components', "numStories", "height", "confidence", "fidelity"]:  # TODO deal with numStories
+                                if attr_k not in ['components', 'numStories', 'height']:  # TODO deal with numStories
                                     temp_dict[attr_k] = attrs[0].get(attr_k)
                                 if attr_k == 'components':
                                     components = attrs[0].get(attr_k)
@@ -309,13 +315,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                 if attr_k == 'height':
                                     temp_dict['heightMeters'] = round(attrs[0].get(attr_k), 3)
                                     temp_dict['heightFeet'] = round(float(attrs[0].get(attr_k)) * 3.281, 3)
-                                if attr_k in ['confidence', 'fidelity']:
-                                    v = attrs[0].get(attr_k)
-                                    if v:
-                                        temp_dict[attr_k] = round(v, 3)
-                                    else:
-                                        temp_dict[attr_k] = v
-                                if attr_k == 'numStories':  # TODO: Deal With numStories
+                                if attr_k == 'numStories':
                                     e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1],
                                                     reverse=True))
                                     top_story = int(list(e.keys())[0].replace('+', ''))
