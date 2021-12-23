@@ -309,10 +309,12 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                 if attr_k == 'height':
                                     temp_dict['heightMeters'] = round(attrs[0].get(attr_k), 3)
                                     temp_dict['heightFeet'] = round(float(attrs[0].get(attr_k)) * 3.281, 3)
-                                if attr_k == 'confidence':
-                                    temp_dict[attr_k] = round(attrs[0].get(attr_k), 3)
-                                if attr_k == 'fidelity':
-                                    temp_dict[attr_k] = round(attrs[0].get(attr_k), 3)
+                                if attr_k in ['confidence', 'fidelity']:
+                                    v = attrs[0].get(attr_k)
+                                    if v:
+                                        temp_dict[attr_k] = round(v, 3)
+                                    else:
+                                        temp_dict[attr_k] = v
                                 if attr_k == 'numStories':  # TODO: Deal With numStories
                                     e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1],
                                                     reverse=True))
