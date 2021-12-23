@@ -308,7 +308,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                         c_count += 1
                                 if attr_k == 'numStories':  # TODO: Deal With numStories
                                     e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1], reverse=True))
-                                    top_story = int(list(e.keys())[0])
+                                    top_story = int(list(e.keys())[0].replace('+', ''))
                                     temp_dict['numStories'] = top_story
                                     temp_dict['numStorConfidence'] = attrs[0].get(attr_k).get(f'{top_story}')
             print(temp_dict)
