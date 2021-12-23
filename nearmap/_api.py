@@ -60,9 +60,9 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 except (ConnectionError, ConnectionResetError) as e:
                     backoff_time = iter * 0.03
                     if backoff_time >= 1800:
-                        time.sleep(backoff_time)
+                        sleep(backoff_time)
                         iter = 1
-                    time.sleep(backoff_time)
+                    sleep(backoff_time)
                     iter += 1
 
     img_formats = ["jpg", "png", "img"]
@@ -274,7 +274,8 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             return get(url).json()
         elif return_url:
             return "f'" + url + "'"
-    elif out_format in ["pandas", "pd", "geopandas", "gpd", "geojson"] or Path(out_format).suffix in supported_export_formats:
+    elif out_format in ["pandas", "pd", "geopandas", "gpd", "geojson"] or Path(out_format).suffix in \
+            supported_export_formats:
         import geopandas as gpd
         import pandas as pd
         from shapely import geometry
@@ -291,12 +292,12 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             for k in f.keys():
                 if k in column_names:
                     if k not in ['attributes', 'geometry', 'components']:
-                        temp_dict[k]=f.get(k)
+                        temp_dict[k] = f.get(k)
                     if 'attributes' in f.keys():
                         attrs = f.get('attributes')
                         if len(attrs) > 0:
                             for attr_k in attrs[0].keys():
-                                if attr_k not in ['components']:
+                                if attr_k not in ['components', "numStories"]:  # TODO deal with numStories
                                     temp_dict[attr_k] = attrs[0].get(attr_k)
                                 if attr_k == 'components':
                                     components = attrs[0].get(attr_k)
@@ -305,6 +306,11 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                         for c_k in c.keys():
                                             temp_dict[f"c{c_count}_{c_k}"] = components[c_count].get(c_k)
                                         c_count += 1
+                                if attr_k == 'numStories':  # TODO: Deal With numStories
+                                    e = dict(sorted(attrs[0].get(attr_k).items(), key=lambda item: item[1], reverse=True))
+                                    top_story = int(list(e.keys())[0])
+                                    temp_dict['numStories'] = top_story
+                                    temp_dict['numStorConfidence'] = attrs[0].get(attr_k).get(f'{top_story}')
             print(temp_dict)
             features_list.append(temp_dict)
         gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
