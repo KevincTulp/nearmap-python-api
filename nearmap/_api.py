@@ -280,7 +280,6 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
         import pandas as pd
         from shapely import geometry
         my_json = get(url).json().get('features')
-
         column_names = []
         for f in my_json:
             [column_names.append(i) for i in f.keys() if i not in column_names]
@@ -327,23 +326,29 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                         temp_dict['numStorConfidence'] = None
             print(temp_dict)
             features_list.append(temp_dict)
-        gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
-
-        if out_format in ["pandas", "pd"]:
-            return pd.DataFrame(gdf)
-        if out_format in ["geopandas", "gpd"]:
-            return gdf
-        elif out_format == "geojson":
-            return gdf.to_json()
-        elif Path(out_format).suffix in supported_export_formats:
-            out_file_format = Path(out_format).suffix
-            if out_file_format == ".geojson":
-                gdf.to_file(out_format, driver='GeoJSON')
-            if out_file_format == ".shp":
-                gdf.to_file(out_format)
-            elif out_file_format == ".gpkg":
-                # TODO: Iterate through geodataframe, split by feature type and output separate layers
-                gdf.to_file(out_format, layers="ai_data", driver="GPKG")
+        if not features_list:
+            print(f"Error: No Features Detected for AI Pack '{packs}'")
+            return None
+        else:
+            gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
+            if out_format in ["pandas", "pd"]:
+                return pd.DataFrame(gdf)
+            if out_format in ["geopandas", "gpd"]:
+                return gdf
+            elif out_format == "geojson":
+                return gdf.to_json()
+            elif Path(out_format).suffix in supported_export_formats:
+                out_file_format = Path(out_format).suffix
+                if out_file_format == ".geojson":
+                    gdf.to_file(out_format, driver='GeoJSON')
+                    return out_format
+                if out_file_format == ".shp":
+                    gdf.to_file(out_format)
+                    return out_format
+                elif out_file_format == ".gpkg":
+                    # TODO: Iterate through geodataframe, split by feature type and output separate layers
+                    gdf.to_file(out_format, layers="ai_data", driver="GPKG")
+                    return out_format
     else:
         print(f"Error: output out_format {out_format} is not supported.")
         exit()
