@@ -324,7 +324,6 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                         temp_dict['numStorConfidence'] = round(v, 3)
                                     else:
                                         temp_dict['numStorConfidence'] = None
-            print(temp_dict)
             features_list.append(temp_dict)
         if not features_list:
             print(f"Error: No Features Detected for AI Pack '{packs}'")
