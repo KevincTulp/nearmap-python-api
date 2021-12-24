@@ -309,7 +309,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                     c_count = 0
                                     for c in components:
                                         for c_k in c.keys():
-                                            temp_dict[f"c{c_count}_{c_k}"] = components[c_count].get(c_k)
+                                            temp_dict[f"comp{c_count}_{c_k}"] = components[c_count].get(c_k)
                                         c_count += 1
                                 if attr_k == 'height':
                                     temp_dict['heightMeters'] = round(attrs[0].get(attr_k), 3)
