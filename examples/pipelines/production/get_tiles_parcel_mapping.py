@@ -100,7 +100,7 @@ def _exception_info():
     return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
 
 
-def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename, geom):
+def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename, geom, processing_method=None):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -157,8 +157,6 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
             in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
             out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
             _create_folder(output_dir)
-
-            processing_method = None
 
             if processing_method in ["mask", "bounds"]:
                 wgs84 = pyproj.CRS('EPSG:4326')
@@ -311,8 +309,9 @@ def _return_existing(in_params, image, fid, out_manifest):
         return m
 
 
-def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, out_manifest, num_threads,
-                   surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
+def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, processing_method,
+                   out_manifest, num_threads, surveyid, tileResourceType, tertiary, since, until, mosaic, include,
+                   exclude, rate_limit_mode):
     fid_value = feature.get(fid)
     unique_id = feature.get('id')
     geom = feature.get('geom')
@@ -377,7 +376,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
             my_scratch_folder = f'{tiles_folder}\\scratch_{fid_value}'
             _create_folder(my_scratch_folder)
             georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format,
-                               image_basename=fid_value, geom=geom)
+                               image_basename=fid_value, geom=geom, processing_method=processing_method)
             rmtree(my_tiles_folder, ignore_errors=True)
             rmtree(my_scratch_folder, ignore_errors=True)
         return results
@@ -389,9 +388,9 @@ def geom_bounds_poly(in_geom):
 
 
 def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method,
-                    buffer_distance, remove_holes, out_image_format, surveyid=None, tileResourceType='Vert',
-                    tertiary=None, since=None, until=None, mosaic=None, include=None, exclude=None,
-                    rate_limit_mode="slow", max_cores=None, max_threads=None):
+                    buffer_distance, remove_holes, out_image_format, processing_method=None, surveyid=None,
+                    tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None, include=None,
+                    exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
     from shapely.geometry import multipolygon, polygon
     assert Path(input_geojson).suffix == ".geojson", f"Error: 'input_geojson' {input_geojson} is not of type '.geojson'"
 
@@ -525,8 +524,9 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
             jobs = []
             for feature in features:
                 jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, feature, fid,
-                                            out_image_format, out_manifest, num_threads, surveyid, tileResourceType,
-                                            tertiary, since, until, mosaic, include, exclude, rate_limit_mode))
+                                            out_image_format, processing_method, out_manifest, num_threads, surveyid,
+                                            tileResourceType, tertiary, since, until, mosaic, include, exclude,
+                                            rate_limit_mode))
             for job in jobs:
                 result = job.result()
                 if out_manifest:
@@ -572,18 +572,19 @@ if __name__ == "__main__":
     skip_duplicate_fid = True
     output_dir = r'C:\output_test'
     zoom = 21 # Nearmap imagery zoom level
-    download_method = 'bounds' # 'bounds', 'bounds_per_feature', or 'geometry'
+    download_method = 'bounds'  # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 0  # Buffer Distance in Meters
-    remove_holes = True # Remove holes within polygons
-    out_image_format = 'jpg' # supported: 'jpg', 'tif', 'png'
-    out_manifest = True # Output a manifest of data extracted
+    remove_holes = True  # Remove holes within polygons
+    out_image_format = 'jpg'  # supported: 'jpg', 'tif', 'png'
+    processing_method = 'mask' # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
+    out_manifest = True  # Output a manifest of data extracted
 
     ###############################
     # Survey Specific User Params
     #############################
 
-    surveyid = None # Optional for calling a spefic survey...
-    tileResourceType = 'Vert' # Currently only 'Vert' and 'North' are supported
+    surveyid = None  # Optional for calling a spefic survey...
+    tileResourceType = 'Vert'  # Currently only 'Vert' and 'North' are supported
     tertiary = None
     since = None
     until = None
@@ -592,6 +593,6 @@ if __name__ == "__main__":
     exclude = None
     rate_limit_mode = 'slow'
 
-    tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method, buffer_distance,
-                    remove_holes, out_image_format, surveyid, tileResourceType, tertiary, since, until, mosaic, include,
-                    exclude, rate_limit_mode)
+    tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method,
+                    buffer_distance, remove_holes, out_image_format, processing_method, surveyid, tileResourceType,
+                    tertiary, since, until, mosaic, include, exclude, rate_limit_mode)
