@@ -4,8 +4,8 @@
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #            Connor Tluck | Solutions Engineer | Nearmap
 #   Date created: 7/7/2021
-#   Last update: 9/17/2021
-#   Python Version: 3.6+
+#   Last update: 12/23/2021
+#   Python Version: 3.8+
 ####################################
 
 __version__ = "0.1.0"
@@ -328,8 +328,8 @@ class NEARMAP(object):
     #  NEARMAP AI
     #############
 
-    def aiFeaturesV4(self, polygon, since=None, until=None, packs=None, out_format="json", lat_lon_direction="yx",
-                     surveyResourceID=None, return_url=False):
+    def aiFeaturesV4(self, polygon, since=None, until=None, packs=None, out_format="json", output=None,
+                     lat_lon_direction="yx", surveyResourceID=None, return_url=False):
         """
         Function retrieves AI Feature tiles for a specified location. Use this API to access vectorized
         features detected using AI with optional date control.
@@ -394,7 +394,7 @@ class NEARMAP(object):
         :return: json, text, or pandas dataframe object
 
         """
-        return _api.aiFeaturesV4(self.base_url, self.api_key, polygon, since, until, packs, out_format,
+        return _api.aiFeaturesV4(self.base_url, self.api_key, polygon, since, until, packs, out_format, output,
                                  lat_lon_direction, surveyResourceID, return_url)
 
 

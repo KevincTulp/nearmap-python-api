@@ -231,7 +231,7 @@ def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=
 #############
 
 
-def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None, out_format="json",
+def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None, out_format="json", output=None,
                  lat_lon_direction="yx", surveyResourceID=None, return_url=False):
     url = str()
     if not return_url:
@@ -254,7 +254,13 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             url += "&until={until}"
     if packs:
         if not return_url:
-            url += f"&packs={packs}"
+            if type(packs) == list:
+                f_packs = ','.join(packs)
+            else:
+                f_packs = packs
+                packs = packs.split(",")
+            url += f"&packs={f_packs}"
+
         else:
             url += "&packs={packs}"
     if surveyResourceID:
@@ -267,18 +273,26 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
     else:
         url += "&apikey={api_key}"
 
-    supported_export_formats = ['.shp', '.geojson', '.gpkg']
-
+    supported_export_formats = ["pandas", "pd", "geopandas", "gpd", "geojson", "shp", "gpkg"]
+    supported_file_formats = ["geojson", "shp", "gpkg"]
     if out_format == "json":
         if not return_url:
             return get(url).json()
         elif return_url:
             return "f'" + url + "'"
-    elif out_format in ["pandas", "pd", "geopandas", "gpd", "geojson"] or Path(out_format).suffix in \
-            supported_export_formats:
+    elif out_format in supported_export_formats:
+        if out_format in supported_file_formats:
+            if len(packs) > 1:
+                assert output, f"Error: no 'output' directory specified"
+                assert Path(output).is_dir(), f"Error: 'output' must be a directory if > 1 packs are requested"
+            elif len(packs) == 1:
+                assert output, f"Error: no 'output' file or directory specified"
+                assert Path(output).suffix in [".shp", ".geojson", ".gpkg"], \
+                    f"Error: format {Path(output).suffix} not supported"
         import geopandas as gpd
         import pandas as pd
         from shapely import geometry
+        print(url)
         my_json = get(url).json().get('features')
         column_names = []
         for f in my_json:
@@ -302,7 +316,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                         attrs = f.get('attributes')
                         if len(attrs) > 0:
                             for attr_k in attrs[0].keys():
-                                if attr_k not in ['components', 'numStories', 'height']:  # TODO deal with numStories
+                                if attr_k not in ['components', 'numStories', 'height']:
                                     temp_dict[attr_k] = attrs[0].get(attr_k)
                                 if attr_k == 'components':
                                     components = attrs[0].get(attr_k)
@@ -334,20 +348,20 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                 return pd.DataFrame(gdf)
             if out_format in ["geopandas", "gpd"]:
                 return gdf
-            elif out_format == "geojson":
+            elif out_format == "geojson" and output is None:
                 return gdf.to_json()
-            elif Path(out_format).suffix in supported_export_formats:
-                out_file_format = Path(out_format).suffix
-                if out_file_format == ".geojson":
-                    gdf.to_file(out_format, driver='GeoJSON')
-                    return out_format
-                if out_file_format == ".shp":
-                    gdf.to_file(out_format)
-                    return out_format
-                elif out_file_format == ".gpkg":
-                    # TODO: Iterate through geodataframe, split by feature type and output separate layers
-                    gdf.to_file(out_format, layers="ai_data", driver="GPKG")
-                    return out_format
+            elif out_format in supported_file_formats:
+                # TODO: Keep editing below.... resolve output... ensure format and extension line up and/or deal with folder also
+                # TODO: Iterate through geodataframe, split by feature type and output separate layers
+                if out_format == "geojson":
+                    gdf.to_file(output, driver='GeoJSON')
+                    return output
+                if out_format == "shp":
+                    gdf.to_file(output)
+                    return output
+                elif out_format == "gpkg":
+                    gdf.to_file(output, layers="ai_data", driver="GPKG")
+                    return output
     else:
         print(f"Error: output out_format {out_format} is not supported.")
         exit()
