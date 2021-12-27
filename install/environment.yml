@@ -34,6 +34,6 @@ dependencies:
   - conda-forge::stringcase        # Convert string cases between camel case, pascal case, snake case etc...
   - conda-forge::pyarrow           # Python libraries for Apache Arrow
 #  - anaconda::boto3               # Install Amazon AWS Boto3
-  - python=3.8       # libraries require python 3.8  <-- Until GDAL Bindings properly support Python 3.9+
+  - python>=3.8       # libraries require python 3.8  <-- Until GDAL Bindings properly support Python 3.9+
   - pip:
       - tiletanic     # Tools for Manipulating Geospatial Tiling Schemes

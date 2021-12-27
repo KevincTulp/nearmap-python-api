@@ -73,7 +73,7 @@ GOTO %1
     )
     EXIT /B
 
-:: Just uninstall via pip to active environment
+:: Just uninstall via pip to deactive environment
 :pip_remove
     ENDLOCAL & (
         CALL pip uninstall -e ./../
