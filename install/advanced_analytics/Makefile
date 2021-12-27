@@ -36,11 +36,13 @@ env:
 ## Remove the Environment
 env_remove:
 	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	conda deactivate
 	conda env remove --name $(ENV_NAME) -y
 
 ## Update the Environment
 env_update:
 	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	conda deactivate
 	conda env remove --name $(ENV_NAME) -y
 	conda env create -f environment.yml
 	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ../..)
