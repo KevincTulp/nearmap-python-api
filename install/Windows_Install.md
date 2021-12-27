@@ -43,7 +43,7 @@ This will deploy a new conda environment from scripts at the root + install dire
   - For Nearmap-Py3 Standard Library: ```cd nearmap-python-api/install```
   - For Nearmap-Py3-Advanced Library: ```cd nearmap-python-api/install/advanced_analytics```
 
-- <B>If Just updating or removing Nearmap:</B>
+- <B>If only updating or removing Nearmap:</B>
   - 3.) Run: ```make pip_remove```
   - Stop at this point if you are only removing Nearmap
   - 4.) Run: ```make pip_install```
