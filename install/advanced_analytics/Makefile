@@ -30,8 +30,33 @@ clean:
 env:
 	conda env create -f environment.yml
 	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ../..)
-#	jupyter labextension install @jupyter-widgets/jupyterlab-manager -
+##	jupyter labextension install @jupyter-widgets/jupyterlab-manager -
 	@echo ">>> New conda environment, $(ENV_NAME), created. Activate with: - source activate $(ENV_NAME) - make env_activate"
+
+## Remove the Environment
+env_remove:
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	conda env remove --name $(ENV_NAME) -y
+
+## Update the Environment
+env_update:
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	conda env remove --name $(ENV_NAME) -y
+	conda env create -f environment.yml
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ../..)
+
+## Create Nearmap EGG
+pip_install:
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ../..)
+
+## Remove Nearmap EGG
+pip_remove:
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+
+## Update Nearmap EGG
+pip_update:
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ../..)
 
 ## Export the current environment
 env_export:
