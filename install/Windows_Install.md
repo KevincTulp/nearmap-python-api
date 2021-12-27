@@ -19,7 +19,7 @@
 
 **For Nearmap-Py3-Standard Library Installer:**
 
-- 4.) Map to the install directory: ```cd nearmap-python-api/install" directory```
+- 4.) Map to the install directory: ```cd nearmap-python-api/install directory```
 
 - 5.) Run: ```make env```
 
@@ -27,7 +27,7 @@
 
 **For Nearmap-Py3-Advanced Library Installer:**
 
-- 4.) Map to the install directory: ```cd nearmap-python-api/install/advanced_analytics ```
+- 4.) Map to the install directory: ```cd nearmap-python-api/install/advanced_analytics```
 
 - 5.) Run: ```make env```
 
