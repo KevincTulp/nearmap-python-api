@@ -84,6 +84,8 @@ GOTO %1
         CALL activate "%ENV_NAME%"
         :: Install the local package in development mode
         CALL python -m pip install -e ./../
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
 	)
 	EXIT /B
 
