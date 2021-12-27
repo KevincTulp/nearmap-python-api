@@ -22,12 +22,13 @@
 3.) Install Git:
 - ```sudo apt-get install git```
 
+4.) Install Make
+- ```sudo apt install make```
+
 4.) Download Nearmap-Python-API from GitHub and install environment using Conda:
 
-
 - ```cd Documents```
-
-
+<br></br>
 - For Nearmap-Py3-Standard + Nearmap API for Python: (Supported on Arm64 Devices)
   - ```git clone https://github.com/nearmap/nearmap-python-api```
   - ```cd nearmap-python-api/install && make env```

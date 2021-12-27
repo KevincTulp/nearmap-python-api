@@ -9,7 +9,7 @@ PROJECT_NAME = nearmap
 ENV_NAME = nearmap-py3
 
 SHELL=/bin/bash
-CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
+CONDA_BASE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -29,36 +29,34 @@ clean:
 ## Build the local environment from the environment file
 env:
 	conda env create -f environment.yml
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
 ##	jupyter labextension install @jupyter-widgets/jupyterlab-manager -
 	@echo ">>> New conda environment, $(ENV_NAME), created. Activate with: - source activate $(ENV_NAME) - make env_activate"
 
 ## Remove the Environment
 env_remove:
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	conda deactivate
-	conda env remove --name $(ENV_NAME) -y
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y )
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda env remove --name $(ENV_NAME) -y)
 
 ## Update the Environment
 env_update:
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	conda deactivate
-	conda env remove --name $(ENV_NAME) -y
-	conda env create -f environment.yml
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda env remove --name $(ENV_NAME) -y)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda env create -f environment.yml)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
 
 ## Create Nearmap EGG
 pip_install:
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
 
 ## Remove Nearmap EGG
 pip_remove:
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
 
 ## Update Nearmap EGG
 pip_update:
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	($(CONDA_ACTIVATE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
 
 ## Export the current environment
 env_export:
