@@ -37,7 +37,7 @@ This will deploy a new conda environment from scripts at the root + install dire
 
 <h2>Removing -or- Updating Nearmap and/or Nearmap + Virtual Environment + Dependencies</h2>
 
-1.) Pull the updated Nearmap-Python-API from GitHub
+1.) Pull the latest Nearmap-Python-API from GitHub
 
 2.) Depending on the installed library map to the appropriate install directory
   - For Nearmap-Py3 Standard Library: ```cd nearmap-python-api/install```
