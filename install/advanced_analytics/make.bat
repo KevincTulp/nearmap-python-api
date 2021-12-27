@@ -60,15 +60,23 @@ GOTO %1
 :: Remove the environment
 :env_remove
 	ENDLOCAL & (
+	    CALL pip uninstall -e ./../../
 		CALL deactivate
-		CALL conda env remove --name "%ENV_NAME%" -y
+		CALL conda env remove --name "%ENV_NAME%" --all -y
 	)
 	EXIT /B
 
 :: Just install via pip to active environment
 :pip_install
     ENDLOCAL & (
-        CALL pip install -e .
+        CALL pip install -e ./../../
+    )
+    EXIT /B
+
+:: Just uninstall via pip to active environment
+:pip_remove
+    ENDLOCAL & (
+        CALL pip uninstall -e ./../../
     )
     EXIT /B
 
