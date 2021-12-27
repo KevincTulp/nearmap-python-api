@@ -39,16 +39,12 @@ GOTO %1
 :: Build the local environment from the environment file
 :env
     ENDLOCAL & (
-
         :: Create environment using env file
         CALL conda env create -f environment.yml
-
         :: Activate the environment
         CALL activate "%ENV_NAME%"
-
         :: Install the local package in development mode
         CALL python -m pip install -e ./../../
-
     )
     EXIT /B
 
@@ -60,15 +56,43 @@ GOTO %1
 :: Remove the environment
 :env_remove
 	ENDLOCAL & (
+	    :: Activate the environment
+        CALL activate "%ENV_NAME%"
+	    :: Removing Nearmap from the Environment. Deleting the EGG
 	    CALL pip uninstall nearmap -y
-		CALL deactivate
-		CALL conda env remove --name "%ENV_NAME%" --all -y
+	    :: Deactivating the Environment
+		CALL conda deactivate
+		:: Removing the Environment
+		CALL conda env remove --name "%ENV_NAME%" -y
+	)
+	EXIT /B
+
+:: Update the environment
+:env_update
+	ENDLOCAL & (
+	    :: Activate the environment
+        CALL activate "%ENV_NAME%"
+	    :: Removing Nearmap
+	    CALL pip uninstall nearmap -y
+	    :: Deactivating the Environment
+		CALL conda deactivate
+		:: Removing the Environment
+		CALL conda env remove --name "%ENV_NAME%" -y
+		:: Create environment using env file
+        CALL conda env create -f environment.yml
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
+        :: Install the local package in development mode
+        CALL python -m pip install -e ./../../
 	)
 	EXIT /B
 
 :: Install the Nearmap EGG
 :pip_install
     ENDLOCAL & (
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
+        :: Installing Nearmap to the Environment. Generating the EGG
         CALL pip install -e ./../../
     )
     EXIT /B
@@ -76,6 +100,9 @@ GOTO %1
 :: Remove the Nearmap EGG
 :pip_remove
     ENDLOCAL & (
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
+        :: Removing Nearmap from the Environment. Deleting the EGG
         CALL pip uninstall nearmap -y
     )
     EXIT /B
@@ -83,7 +110,11 @@ GOTO %1
 :: Update the Nearmap EGG
 :pip_update
     ENDLOCAL & (
+        :: Activate the environment
+        CALL activate "%ENV_NAME%"
+        :: Removing Nearmap from the Environment. Deleting the EGG
         CALL pip uninstall nearmap -y
+        :: Installing Nearmap to the Environment. Generating the EGG
         CALL pip install -e ./../../
     )
     EXIT /B
@@ -91,7 +122,9 @@ GOTO %1
 :: Run jupyter lab
 :jupyter
 	ENDLOCAL & (
+	    :: Activate the environment
 		CALL activate "%ENV_NAME%"
+		:: Open Jupyter Lab
 		CALL jupyter lab
 	)
 	EXIT /B
