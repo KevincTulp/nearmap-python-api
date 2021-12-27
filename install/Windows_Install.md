@@ -35,7 +35,7 @@
 
 This will deploy a new conda environment from scripts at the root + install directory of the project with all necessary analytics package dependencies.
 
-<h2>Removing -or- Updating Nearmap and/or Nearmap + Dependencies</h2>
+<h2>Removing -or- Updating Nearmap and/or Nearmap + Virtual Environment + Dependencies</h2>
 
 1.) Pull the updated Nearmap-Python-API from GitHub
 
