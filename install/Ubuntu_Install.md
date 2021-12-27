@@ -63,9 +63,9 @@
     - This will update only the nearmap library on your Virtual Environment
 
 
-  - <b>If only removing Nearmap:</b>
-    - 4.) Run: ```make pip_remove```
-    - This will only remove the nearmap library on your Virtual Environment
+- <b>If only removing Nearmap:</b>
+  - 4.) Run: ```make pip_remove```
+  - This will only remove the nearmap library on your Virtual Environment
 
 
 - <B>If removing Nearmap + Virtual Environment + Dependencies:</B>
