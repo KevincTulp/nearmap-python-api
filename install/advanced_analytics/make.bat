@@ -66,17 +66,25 @@ GOTO %1
 	)
 	EXIT /B
 
-:: Just install via pip to active environment
+:: Install the Nearmap EGG
 :pip_install
     ENDLOCAL & (
         CALL pip install -e ./../../
     )
     EXIT /B
 
-:: Just uninstall via pip to deactive environment
+:: Remove the Nearmap EGG
 :pip_remove
     ENDLOCAL & (
         CALL pip uninstall nearmap -y
+    )
+    EXIT /B
+
+:: Update the Nearmap EGG
+:pip_update
+    ENDLOCAL & (
+        CALL pip uninstall nearmap -y
+        CALL pip install -e ./../../
     )
     EXIT /B
 
