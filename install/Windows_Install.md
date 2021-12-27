@@ -40,7 +40,7 @@ This will deploy a new conda environment from scripts at the root + install dire
 1.) Pull the latest Nearmap-Python-API from GitHub
 
 2.) Depending on the installed library map to the appropriate installation directory
-  - For Nearmap-Py3 Standard Library: ```cd nearmap-python-api/install```
+  - For Nearmap-Py3 Standard Library: ```cd nearmap-python-api/install``` 
   - For Nearmap-Py3-Advanced Library: ```cd nearmap-python-api/install/advanced_analytics```
 
 - <B>If only updating or removing Nearmap:</B>
