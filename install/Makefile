@@ -35,8 +35,8 @@ env:
 
 ## Remove the Environment
 env_remove:
+	conda deactivate $(ENV_NAME)
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y )
-	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda deactivate)
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda env remove --name $(ENV_NAME) -y)
 
 ## Update the Environment
