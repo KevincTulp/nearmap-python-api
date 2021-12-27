@@ -60,7 +60,7 @@ GOTO %1
 :: Remove the environment
 :env_remove
 	ENDLOCAL & (
-	    CALL pip uninstall nearmap
+	    CALL pip uninstall nearmap -y
 		CALL deactivate
 		CALL conda env remove --name "%ENV_NAME%" -y
 	)
@@ -76,7 +76,7 @@ GOTO %1
 :: Just uninstall via pip to deactive environment
 :pip_remove
     ENDLOCAL & (
-        CALL pip uninstall nearmap
+        CALL pip uninstall nearmap -y
     )
     EXIT /B
 
