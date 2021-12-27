@@ -31,7 +31,7 @@
 
 - 5.) Run: ```make env```
 
-- 6.) Activate the conda environment ```conda activate nearmap-py3-advanced```
+- 6.) If necessary activate the conda environment ```conda activate nearmap-py3-advanced```
 
 This will deploy a new conda environment from scripts at the root + install directory of the project with all necessary analytics package dependencies.
 
@@ -42,16 +42,21 @@ This will deploy a new conda environment from scripts at the root + install dire
 2.) Depending on the installed library map to the appropriate installation directory
   - For Nearmap-Py3 Standard Library: ```cd nearmap-python-api/install``` 
   - For Nearmap-Py3-Advanced Library: ```cd nearmap-python-api/install/advanced_analytics```
-
-- <B>If only updating or removing Nearmap:</B>
-  - 3.) Run: ```make pip_remove```
-  - Stop at this point if you are only removing Nearmap
-  - 4.) Run: ```make pip_install```
-  - This will update only the nearmap library on your Virtual Environment
-- <B>If updating or removing Nearmap + Virtual Environment + Dependencies:</B>
-  - 3.) Run: ```make env_remove```
-  - Stop at this point if you are only removing Nearmap & Virtual Environment + Dependencies
-  - 4.) Run: ```make env```
-  - 5.) Activate the conda environment conda: ```activate nearmap-py3-advanced```
-  - This will deploy a new conda environment from scripts at the root + install directory of the project with all necessary analytics package dependencies.
+<br></br>
+  - <B>If only updating Nearmap:</B>
+    - 3.) Run: ```make pip_update```
+    - This will update only the nearmap library on your Virtual Environment
+<br></br>
+  - <b>If only removing Nearmap:</b>
+    - 3.) Run: ```make pip_remove```
+    - This will only remove the nearmap library on your Virtual Environment
+<br></br>
+  - <B>If removing Nearmap + Virtual Environment + Dependencies:</B>
+    - 3.) Run: ```make env_remove```
+    - This removes the entire Virtual Environment
+<br></br>
+  - <B>If Updating Nearmap + Virtual Environment + Dependencies:</B>
+    - 3.) Run: ```make env_update```
+    - 5.) If necessary activate the conda environment conda: ```activate nearmap-py3``` or ```activate nearmap-py3-advanced```
+    - This will update the virtual environment with all necessary dependencies and Nearmap API
 
