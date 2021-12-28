@@ -281,8 +281,9 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
 
 
 def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
-                    group_zoom_level, surveyid=None, tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None,
-                    include=None, exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
+                    group_zoom_level, processing_method=None, surveyid=None, tileResourceType='Vert', tertiary=None,
+                    since=None, until=None, mosaic=None, include=None, exclude=None, rate_limit_mode="slow",
+                    max_cores=None, max_threads=None):
 
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -312,10 +313,17 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         with fiona.open(in_geojson) as src:
             for rec in src:
                 # Convert to web mercator, load as shapely geom.
-                wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
+                print(rec.get('geometry'))
+                wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                print(wm_geom)
+                if buffer_distance or buffer_distance != 0:
+                    wm_geom = wm_geom.buffer(buffer_distance, cap_style=3, join_style=2)
+                    print(wm_geom)
                 if remove_holes:
                     wm_geom = Polygon(wm_geom.exterior)
+                    print(wm_geom)
                 geoms.append(wm_geom)
+                #exit()
         # Find the covering.
         tiles = []
         for geom in geoms:
@@ -405,23 +413,30 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     nearmap = NEARMAP(api_key)
 
-    # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
-    # Example: "FL_1245025_MiamiBeach_Source.geojson"
+    '''
+    Instructuions:
+    
+    Input Directory must be a folder with .geojson files formatted as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
+    GeoJSON files must also be projected in WGS 1984 'EPSG:4326'
+    Example: "FL_1245025_MiamiBeach_Source.geojson"
+    '''
+
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output_tiles'
+    output_dir = r'C:\output_tiles_100'
     zoom = 21
-    buffer_distance = None  # Currently Not Working
+    buffer_distance = 100  # None or ex: 50 .... Distance in meters to offset by
     remove_holes = True
-    out_image_format = 'jpg' #'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'jpg'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     group_zoom_level = 13
+    processing_method = None  # Currently Disabled
     out_manifest = True
 
     ###############################
     # Survey Specific User Params
     #############################
 
-    surveyid = None # Optional for calling a spefic survey...
-    tileResourceType = 'Vert' # Currently only 'Vert' and 'North' are supported
+    surveyid = None  # Optional for calling a spefic survey...
+    tileResourceType = 'Vert'  # Currently only 'Vert' and 'North' are supported
     tertiary = None
     since = None
     until = None
@@ -431,5 +446,5 @@ if __name__ == "__main__":
     rate_limit_mode = 'slow'
 
     tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
-                    group_zoom_level, surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude,
-                    rate_limit_mode)
+                    group_zoom_level, processing_method, surveyid, tileResourceType, tertiary, since, until, mosaic,
+                    include, exclude, rate_limit_mode)
