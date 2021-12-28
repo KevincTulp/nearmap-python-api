@@ -391,6 +391,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
             files.set_postfix({'status': 'Begin Loading Manifest to GeoDataFrame'})
             # print(f'Begin Loading Manifest to GeoDataFrame')
             result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+            del r_tiles
             te = time.time()
             files.set_postfix({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
             files.set_postfix({'status': 'Begin Exporting Results to geojson file'})
@@ -399,7 +400,14 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
             result.to_file(manifest_file, driver='GeoJSON')
             te = time.time()
             files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
-        rmtree(tiles_folder)
+            ts = time.time()
+            files.set_postfix({'status': 'Begin Exporting Result Extents to geojson file'})
+            manifest_extents_file = project_folder / "manifest_extents.geojson"
+            result.dissolve(by="zip_zoom").to_file(manifest_extents_file, driver='GeoJSON')
+            del result
+            te = time.time()
+            files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
+        rmtree(tiles_folder, ignore_errors=True)
         end = time.time()  # End Clocking
         files.set_postfix({'status': f"Processed in {end - start} seconds"})
 
@@ -414,7 +422,7 @@ if __name__ == "__main__":
     nearmap = NEARMAP(api_key)
 
     '''
-    Instructuions:
+    Data Preparation Instructions:
     
     Input Directory must be a folder with .geojson files formatted as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     GeoJSON files must also be projected in WGS 1984 'EPSG:4326'
@@ -424,7 +432,7 @@ if __name__ == "__main__":
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
     output_dir = r'C:\output_tiles_100'
     zoom = 21
-    buffer_distance = 100  # None or ex: 50 .... Distance in meters to offset by
+    buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
     remove_holes = True
     out_image_format = 'jpg'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     group_zoom_level = 13
