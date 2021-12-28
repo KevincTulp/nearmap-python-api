@@ -1,7 +1,7 @@
 from nearmap.auth import get_api_key
 from nearmap._api import _get_image
 from nearmap import NEARMAP
-from pathlib import Path
+from pathlib import Path, PurePath
 from math import log, tan, radians, cos, atan, sinh, pi, degrees, floor, ceil
 import fiona
 from fiona.transform import transform_geom
@@ -106,31 +106,37 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
     if isinstance(in_tiles, list):
         tile_list = in_tiles
         tile_dir = Path(tile_list[0]).parents[0]
-    elif isinstance(in_tiles, str):
-        if in_tiles.endswith('.jpg') or in_tiles.endswith('.png'):
-            tile_list = [in_tiles]
-            tile_dir = Path(in_tiles).parents[0]
-        else:
-            tile_list = list(Path(in_tiles).iterdir())
-            tile_dir = Path(tile_list[0]).parents[0]
     else:
-        print(f"Error: Check input formatting of '{in_tiles}' | Not properly formatted for 'georeference_tiles' process")
-
-    scratch_dir_georeg = f'{scratch_dir}\\scratch_georeg'
+        in_tiles = Path(in_tiles)
+        if Path(in_tiles).is_dir() or Path(in_tiles).is_file():
+            if Path(in_tiles).is_dir():
+                tile_list = list(Path(in_tiles).iterdir())
+                tile_dir = Path(tile_list[0]).parents[0]
+            if Path(in_tiles).is_file():
+                if Path(in_tiles).suffix in ['.jpg', '.png']:
+                    tile_list = [in_tiles]
+                    tile_dir = Path(in_tiles).parents[0]
+                else:
+                    tile_list = list(Path(in_tiles).iterdir())
+                    tile_dir = Path(tile_list[0]).parents[0]
+        else:
+            print(f"Error: Check input formatting of '{in_tiles}'"
+                  f" | Not properly formatted for 'georeference_tiles' proces")
+    scratch_dir_georeg = Path(scratch_dir) / 'scratch_georeg'
     _create_folder(scratch_dir_georeg)
 
     georeferenced_tiles = []
     for f in tile_list:
-        if Path(f).is_file():
+        if f.is_file():
             x, y, z = f.stem.split("_")
             bounds = tile_edges(int(x), int(y), int(z))
-            f_out = f'{scratch_dir_georeg}\\{f.name}'
+            f_out = scratch_dir_georeg / f'{f.name}'
             try:
-                gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+                gdal.Translate(f_out.as_posix(), f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
             except Exception as e:
                 print(f'error: {image_basename} | failed to translate | {e} | {_exception_info()}')
-            if Path(f_out).is_file():
-                georeferenced_tiles.append(Path(f_out).resolve().as_posix())
+            if f_out.is_file():
+                georeferenced_tiles.append(f_out.resolve().as_posix())
 
     def _merge_tiles(in_rasters, out_raster, out_image_format):
         # Only options - GTiff (the default) or HFA (Erdas Imagine)
@@ -145,17 +151,17 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
                }
     if out_image_format.lower() in ['tif', 'tiff', 'bil']:
         _create_folder(output_dir)
-        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
+        out_raster = output_dir / f'{image_basename}.{out_image_format}'
         raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_image_format).get('gdal_name'))
         rmtree(scratch_dir_georeg, ignore_errors=True)
         return raster
     else:
-        scratch_tif_dir = f'{scratch_dir}\\scratch_tif'
+        scratch_tif_dir = scratch_dir / 'scratch_tif'
         _create_folder(scratch_tif_dir)
-        out_raster = f'{scratch_tif_dir}\\{image_basename}.tif'
+        out_raster = scratch_tif_dir / f'{image_basename}.tif'
         try:
-            in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
-            out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
+            in_raster = _merge_tiles(georeferenced_tiles, out_raster.as_posix(), formats.get('tif').get('gdal_name'))
+            out_raster = output_dir / f'{image_basename}.{out_image_format}'
             _create_folder(output_dir)
 
             if processing_method in ["mask", "bounds"]:
@@ -166,9 +172,9 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
                 wgs84_geom = ops.transform(project, geom)
 
             if processing_method == "mask":
-                shp = shapely_polygon_to_shp(wgs84_geom, f'{scratch_tif_dir}\\{image_basename}.shp')
+                shp = shapely_polygon_to_shp(wgs84_geom, Path(scratch_tif_dir) / f'{image_basename}.shp')
 
-                raster = gdal.Warp(out_raster, in_raster,
+                raster = gdal.Warp(out_raster.as_posix(), in_raster,
                                    outputBounds=list(wgs84_geom.bounds),
                                    outputBoundsSRS='EPSG:4326',
                                    cutlineDSName=shp,
@@ -213,7 +219,7 @@ def shapely_polygon_to_shp(in_shapely_geom, out_shapefile):
 def zip_files(in_file_list, processing_folder, out_file_name):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
-    with ZipFile(f"{processing_folder}\\{out_file_name}", 'w') as zipF:
+    with ZipFile(processing_folder / out_file_name, 'w') as zipF:
         for i in in_file_list:
             f = Path(i.get('file'))
             if f.is_file():
@@ -276,6 +282,7 @@ def _download_tiles(in_params, fid, out_manifest):
         m['file'] = image
         return m
 
+
 def _return_existing(in_params, image, fid, out_manifest):
     url = in_params.get('url')
     path = in_params.get('path')
@@ -296,7 +303,7 @@ def _return_existing(in_params, image, fid, out_manifest):
             bounds = Polygon(gdal.Info(image, format='json').get('wgs84Extent').get('coordinates')[0])
         except Exception as e:
             print(f"error: {fid_value} | {e} | {_exception_info()}")
-            bounds = Polygon([[0,0], [0,1], [1,1], [1,0],[0,0]])
+            bounds = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
         m = dict()
         m['geometry'] = bounds
         m['id'] = unique_id
@@ -315,7 +322,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
     fid_value = feature.get(fid)
     unique_id = feature.get('id')
     geom = feature.get('geom')
-    out_raster = f'{project_folder}\\{fid_value}.{out_image_format}'
+    out_raster = Path(project_folder) / f'{fid_value}.{out_image_format}'
     if Path(out_raster).is_file():
         temp = dict()
         temp['id'] = unique_id
@@ -329,7 +336,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
         return [results]
     else:
         jobs = []
-        my_tiles_folder = f'{tiles_folder}/{fid_value}'
+        my_tiles_folder = Path(tiles_folder) / f'{fid_value}'
         _create_folder(my_tiles_folder)
         api_key = nearmap.api_key
         out_format = 'img'
@@ -339,8 +346,8 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
                                                 out_image='.img', rate_limit_mode="slow", return_url=True)
         if not surveyid:
             url_template = nearmap.tileV3(tileResourceType=tileResourceType, z=0, x=1, y=2, out_format=out_format,
-                                         out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
-                                         include=include, exclude=exclude, rate_limit_mode=rate_limit_mode,
+                                          out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
+                                          include=include, exclude=exclude, rate_limit_mode=rate_limit_mode,
                                           return_url=True)
 
         with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
@@ -348,7 +355,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
                 z = t.z
                 x = t.x
                 y = t.y
-                path = f'{my_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
+                path = my_tiles_folder / f'{t.x}_{t.y}_{t.z}.img'
                 url = eval(url_template)
                 temp = dict()
                 temp['id'] = unique_id
@@ -367,13 +374,13 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
             results.append(result)
         # time.sleep(0.5)
         if out_image_format.lower() == 'zip':
-            zip_dir(my_tiles_folder, f'{project_folder}\\{fid_value}.zip')
+            zip_dir(my_tiles_folder, project_folder / f'{fid_value}.zip')
             #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
             rmtree(my_tiles_folder, ignore_errors=True)
         elif out_image_format is None:
             pass
         else:
-            my_scratch_folder = f'{tiles_folder}\\scratch_{fid_value}'
+            my_scratch_folder = tiles_folder / f'scratch_{fid_value}'
             _create_folder(my_scratch_folder)
             georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format,
                                image_basename=fid_value, geom=geom, processing_method=processing_method)
@@ -391,8 +398,16 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                     buffer_distance, remove_holes, out_image_format, processing_method=None, surveyid=None,
                     tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None, include=None,
                     exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
-    from shapely.geometry import multipolygon, polygon
-    assert Path(input_geojson).suffix == ".geojson", f"Error: 'input_geojson' {input_geojson} is not of type '.geojson'"
+
+    input_geojson = Path(input_geojson).resolve()
+    output_dir = Path(output_dir).resolve()
+
+    # from shapely.geometry import multipolygon, polygon
+    supported_formats = [".geojson"]
+    assert input_geojson.is_file(), f"Error: in_geojson {input_geojson} is not a file"
+    assert input_geojson.suffix in supported_formats, f"Error: 'input_geojson' {input_geojson} format not in " \
+                                                      f"{supported_formats}"
+    assert not output_dir.is_file(), f"Error: 'output_dir' cannot be a file... must be a folder/directory"
 
     if not skip_duplicate_fid:
         with fiona.open(input_geojson) as src:
@@ -400,13 +415,14 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
             for i in tqdm(src):
                 v = i.get('properties').get(fid)
                 if v in l:
-                    print({'status': f"Error: Duplicate FID's detected in '{fid}'. Resolve before processing or script will fail"})
+                    print({'status': f"Error: Duplicate FID's detected in '{fid}'"
+                                     f". Resolve before processing or script will fail"})
                     exit()
                 l.append(v)
 
-    project_folder = f'{output_dir}'
+    project_folder = output_dir
     _create_folder(project_folder)
-    tiles_folder = f'{project_folder}/tiles'
+    tiles_folder = project_folder / 'tiles'
     start = time.time()
     ts = time.time()
     geoms = []
@@ -455,7 +471,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                             g_list.append(g_ext)
                         feature['geom'] = MultiPolygon(geoms)
                         del g_list
-                    else: # If retain 'geometry'
+                    else:  # If retain 'geometry'
                         geoms = geom.geoms
                         for g in geoms:
                             tiles.extend([i for i in tiletanic.tilecover.cover_geometry(scheme, g, zoom)])
@@ -482,7 +498,8 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                 count += 1
                 features.append(feature)
                 del feature, tiles
-        print({'status': f'Processing {len(l)} of {num_records} Records | Skipping {num_records-len(l)} "{fid}" duplicates'})
+        print({'status': f'Processing {len(l)} of {num_records} Records | Skipping {num_records-len(l)} '
+                         f'"{fid}" duplicates'})
         del l
 
     te = time.time()
@@ -533,7 +550,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                     r_tiles.extend(result)
                 progress.update()
     te = time.time()
-    print({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'});
+    print({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'})
     del features
     if out_manifest:
         ts = time.time()
@@ -544,12 +561,14 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
         print({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
         print({'status': 'Begin Exporting Results to geojson file'})
         ts = time.time()
-        result.to_file(f"{project_folder}\\manifest.geojson", driver='GeoJSON')
+        manifest_file = project_folder / "manifest.geojson"
+        result.to_file(manifest_file, driver='GeoJSON')
         te = time.time()
         print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
         ts = time.time()
         print({'status': 'Begin Exporting Result Extents to geojson file'})
-        result.dissolve(by=fid).to_file(f"{project_folder}\\manifest_extents.geojson", driver='GeoJSON')
+        manifest_extents_file = project_folder / "manifest_extents.geojson"
+        result.dissolve(by=fid).to_file(manifest_extents_file, driver='GeoJSON')
         te = time.time()
         print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
 
@@ -567,16 +586,16 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     nearmap = NEARMAP(api_key)
 
-    input_geojson = r'..\\..\\..\\nearmap\\unit_tests\\TestData\\Parcels_Vector\\JSON\\Parcels.geojson'
+    input_geojson = r'../../../nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcels.geojson'
     fid = 'HCAD_NUM' # Unique Feature ID for downloading/processing
     skip_duplicate_fid = True
-    output_dir = r'C:\output_test'
-    zoom = 21 # Nearmap imagery zoom level
+    output_dir = r'C:/output_test'
+    zoom = 21  # Nearmap imagery zoom level
     download_method = 'bounds'  # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 0  # Buffer Distance in Meters
     remove_holes = True  # Remove holes within polygons
     out_image_format = 'jpg'  # supported: 'jpg', 'tif', 'png'
-    processing_method = 'mask' # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
+    processing_method = 'mask'  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
     out_manifest = True  # Output a manifest of data extracted
 
     ###############################
