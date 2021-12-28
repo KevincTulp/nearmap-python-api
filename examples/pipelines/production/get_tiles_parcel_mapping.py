@@ -587,7 +587,7 @@ if __name__ == "__main__":
     nearmap = NEARMAP(api_key)
 
     input_geojson = r'../../../nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcels.geojson'
-    fid = 'HCAD_NUM' # Unique Feature ID for downloading/processing
+    fid = 'HCAD_NUM'  # Unique Feature ID for downloading/processing
     skip_duplicate_fid = True
     output_dir = r'C:/output_test'
     zoom = 21  # Nearmap imagery zoom level
@@ -602,7 +602,7 @@ if __name__ == "__main__":
     # Survey Specific User Params
     #############################
 
-    surveyid = None  # Optional for calling a spefic survey...
+    surveyid = None  # Optional for calling a specfic survey...
     tileResourceType = 'Vert'  # Currently only 'Vert' and 'North' are supported
     tertiary = None
     since = None
