@@ -16,6 +16,7 @@ from zipfile import ZipFile
 from shutil import rmtree, make_archive, move
 from tqdm import tqdm
 import time
+import sys
 import os
 from os import cpu_count
 from osgeo.gdal import Translate
@@ -89,30 +90,43 @@ def _create_folder(folder):
     return folder
 
 
+def _exception_info():
+    exception_type, exception_object, exception_traceback = sys.exc_info()
+    filename = exception_traceback.tb_frame.f_code.co_filename
+    line_number = exception_traceback.tb_lineno
+    return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
+
+
 def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
         tile_list = in_tiles
         tile_dir = Path(tile_list[0]).parents[0]
-    elif isinstance(in_tiles, str):
-        if in_tiles.endswith('.jpg') or in_tiles.endswith('.png'):
-            tile_list = [in_tiles]
-            tile_dir = Path(in_tiles).parents[0]
-        else:
-            tile_list = list(Path(in_tiles).iterdir())
-            tile_dir = Path(tile_list[0]).parents[0]
     else:
-        print(f"Error: Check input formatting of '{in_tiles}' | Not properly formatted for 'georeference_tiles' process")
-
-    scratch_dir_georeg = f'{scratch_dir}\\scratch_georeg'
+        in_tiles = Path(in_tiles)
+        if Path(in_tiles).is_dir() or Path(in_tiles).is_file():
+            if Path(in_tiles).is_dir():
+                tile_list = list(Path(in_tiles).iterdir())
+                tile_dir = Path(tile_list[0]).parents[0]
+            if Path(in_tiles).is_file():
+                if Path(in_tiles).suffix in ['.jpg', '.png']:
+                    tile_list = [in_tiles]
+                    tile_dir = Path(in_tiles).parents[0]
+                else:
+                    tile_list = list(Path(in_tiles).iterdir())
+                    tile_dir = Path(tile_list[0]).parents[0]
+        else:
+            print(f"Error: Check input formatting of '{in_tiles}'"
+                  f" | Not properly formatted for 'georeference_tiles' proces")
+    scratch_dir_georeg = Path(scratch_dir) / 'scratch_georeg'
     _create_folder(scratch_dir_georeg)
 
     georeferenced_tiles = []
     for f in tile_list:
         x, y, z = f.stem.split("_")
         bounds = tile_edges(int(x), int(y), int(z))
-        f_out = f'{scratch_dir_georeg}\\{f.name}'
+        f_out = (scratch_dir_georeg / f'{f.name}').as_posix()
         Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
         georeferenced_tiles.append(f_out)
 
@@ -129,27 +143,32 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
                }
     if out_image_format.lower() in ['tif', 'tiff', 'bil']:
         _create_folder(output_dir)
-        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
-        raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_image_format).get('gdal_name'))
-        rmtree(scratch_dir_georeg)
+        out_raster = output_dir / f'{image_basename}.{out_image_format}'
+        raster = _merge_tiles(georeferenced_tiles, out_raster.as_posix(), formats.get(out_image_format).get('gdal_name'))
+        rmtree(scratch_dir_georeg, ignore_errors=True)
         return raster
     else:
-        scratch_tif_dir = f'{scratch_dir}\\scratch_tif'
+        scratch_tif_dir = scratch_dir / 'scratch_tif'
         _create_folder(scratch_tif_dir)
-        out_raster = f'{scratch_tif_dir}\\{image_basename}.tif'
-        in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
-        out_raster = f'{output_dir}\\{image_basename}.{out_image_format}'
-        _create_folder(output_dir)
-        raster = Translate(out_raster, in_raster)
-        rmtree(scratch_dir_georeg)
-        rmtree(scratch_tif_dir)
-        return raster
+        out_raster = (scratch_tif_dir / f'{image_basename}.tif').as_posix()
+        try:
+            in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
+            out_raster = (output_dir / f'{image_basename}.{out_image_format}').as_posix()
+            _create_folder(output_dir)
+            raster = Translate(out_raster, in_raster)
+            rmtree(scratch_dir_georeg)
+            rmtree(scratch_tif_dir)
+            return raster
+        except Exception as e:
+            print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
+            rmtree(scratch_dir_georeg, ignore_errors=True)
+            return None
 
 
 def zip_files(in_file_list, processing_folder, out_file_name):
     os.chdir(processing_folder)
     # TODO: Add output zipfile name
-    with ZipFile(f"{processing_folder}\\{out_file_name}", 'w') as zipF:
+    with ZipFile(processing_folder / out_file_name, 'w') as zipF:
         for i in in_file_list:
             f = Path(i.get('file'))
             if f.is_file():
@@ -181,7 +200,7 @@ def _download_tiles(in_params, out_manifest):
     fid = in_params.get('id')
     ext = Path(path).suffix.replace(".", "")
     # print(url, ext, path)
-    image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow")
+    image = _get_image(url=url, out_format=ext, out_image=path.as_posix(), rate_limit_mode="slow")
     if not out_manifest:
         m = dict()
         m['id'] = fid
@@ -208,7 +227,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
                    surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode):
     fid = 0
     jobs = []
-    zzl_tiles_folder = f'{tiles_folder}/{zzl}'
+    zzl_tiles_folder = tiles_folder / f'{zzl}'
     _create_folder(zzl_tiles_folder)
 
     api_key = nearmap.api_key
@@ -219,17 +238,17 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
                                             out_image='.img', rate_limit_mode="slow", return_url=True)
     if not surveyid:
         url_template = nearmap.tileV3(tileResourceType=tileResourceType, z=0, x=1, y=2, out_format=out_format,
-                                     out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
-                                     include=include, exclude=exclude, rate_limit_mode=rate_limit_mode, return_url=True)
+                                      out_image='.img', tertiary=tertiary, since=since, until=until, mosaic=mosaic,
+                                      include=include, exclude=exclude, rate_limit_mode=rate_limit_mode,
+                                      return_url=True)
 
     with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
         for t in zip_d.get(zzl):
             z = t.z
             x = t.x
             y = t.y
-            path = f'{zzl_tiles_folder}\\{t.x}_{t.y}_{t.z}.img'
+            path = zzl_tiles_folder / f'{t.x}_{t.y}_{t.z}.img'
             url = eval(url_template)
-            print(url)
             temp = dict()
             temp['id'] = fid
             temp['url'] = url
@@ -247,13 +266,13 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
         results.append(result)
     # time.sleep(0.5)
     if out_image_format.lower() == 'zip':
-        zip_dir(zzl_tiles_folder, f'{project_folder}/{zzl}.zip')
+        zip_dir(zzl_tiles_folder, project_folder / f'{zzl}.zip')
         #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
         rmtree(zzl_tiles_folder)
     elif out_image_format is None:
         pass
     else:
-        zzl_scratch_folder = f'{tiles_folder}/scratch_{zzl}'
+        zzl_scratch_folder = tiles_folder / f'scratch_{zzl}'
         _create_folder(zzl_scratch_folder)
         georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_image_format, image_basename=zzl)
         rmtree(zzl_tiles_folder)
@@ -265,8 +284,14 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                     group_zoom_level, surveyid=None, tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None,
                     include=None, exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
 
-    group_zoom_level
-    files = tqdm(list(Path(input_dir).iterdir()))
+    input_dir = Path(input_dir).resolve()
+    output_dir = Path(output_dir).resolve()
+
+    assert input_dir.is_dir(), f"Error: 'input_dir' {input_dir}is not a folder/directory"
+    assert not output_dir.is_file(), f"Error: 'output_dir' {output_dir} cannot be a file... must be a folder/directory"
+
+    supported_formats = ['.geojson']
+    files = tqdm([f for f in list(Path(input_dir).iterdir()) if f.suffix in supported_formats])
     in_geojson = None
     for file in files:
         if file.suffix == ".geojson":
@@ -275,9 +300,9 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         name_string = Path(in_geojson).stem.replace("_Source", "")
         state_abbrev = name_string.split("_")[0]
         place_name = f'{name_string.split("_")[1]}_{name_string.split("_")[2]}'
-        project_folder = f'{output_dir}/{state_abbrev}/{place_name}'
+        project_folder = output_dir / state_abbrev / place_name
         _create_folder(project_folder)
-        tiles_folder = f'{project_folder}/tiles'
+        tiles_folder = project_folder / 'tiles'
         files.set_postfix({'status': 'Generating Tile Grid'})
         start = time.time()
         ts = time.time()
@@ -285,7 +310,6 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         scheme = tiletanic.tileschemes.WebMercator()
         in_geojson = Path(in_geojson)
         with fiona.open(in_geojson) as src:
-
             for rec in src:
                 # Convert to web mercator, load as shapely geom.
                 wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec['geometry']))
@@ -305,7 +329,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         del tiles
         # Note that at this stage we have all the XYZ tiles per group_zoom_level.
         te = time.time()
-        files.set_postfix({'status': f'Tile Grid Generated in {te - ts} seconds'});
+        files.set_postfix({'status': f'Tile Grid Generated in {te - ts} seconds'})
         files.set_postfix({'status': 'Downloading Tiles'})
         ts = time.time()
         r_tiles = []
@@ -352,7 +376,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                     r_tiles.extend(result)
                     progress.update()
         te = time.time()
-        files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'});
+        files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'})
         del zip_d
         if out_manifest:
             ts = time.time()
@@ -363,7 +387,8 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
             files.set_postfix({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
             files.set_postfix({'status': 'Begin Exporting Results to geojson file'})
             ts = time.time()
-            result.to_file(f"{project_folder}\\manifest.geojson", driver='GeoJSON')
+            manifest_file = project_folder / "manifest.geojson"
+            result.to_file(manifest_file, driver='GeoJSON')
             te = time.time()
             files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
         rmtree(tiles_folder)
@@ -383,11 +408,11 @@ if __name__ == "__main__":
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output_tif'
+    output_dir = r'C:\output_tif_eee'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
-    out_image_format = 'zip' #'tif' #'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'jpg' #'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     group_zoom_level = 13
     out_manifest = True
 
