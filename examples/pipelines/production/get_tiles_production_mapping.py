@@ -408,7 +408,7 @@ if __name__ == "__main__":
     # Input Directory must be a folder with .geojson files formattes as "StateAbbrev_PlaceFIPS_PlaceName_Source.geojson"
     # Example: "FL_1245025_MiamiBeach_Source.geojson"
     input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
-    output_dir = r'C:\output_tif_eee'
+    output_dir = r'C:\output_tiles'
     zoom = 21
     buffer_distance = None  # Currently Not Working
     remove_holes = True
