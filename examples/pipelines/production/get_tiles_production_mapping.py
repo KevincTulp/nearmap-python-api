@@ -126,7 +126,8 @@ def _exception_info():
     return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
 
 
-def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename, geom, processing_method):
+def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, compression, jpeg_quality, image_basename,
+                       geom, processing_method):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -165,10 +166,10 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
         gdal_merge.main(parameters)
         return out_raster
 
-    formats = {'tif': {'gdal_name': 'GTiff', 'opacity_supported': True},
-               'tiff': {'gdal_name': 'GTiff', 'opacity_supported': True},
-               'jpg': {'gdal_name': 'JPG', 'opacity_supported': False},
-               'png': {'gdal_name': 'PNG', 'opacity_supported': True}
+    formats = {'tif': {'gdal_name': 'GTiff', 'opacity_supported': True, 'compression_supported': True},
+               'tiff': {'gdal_name': 'GTiff', 'opacity_supported': True, 'compression_supported': True},
+               'jpg': {'gdal_name': 'JPG', 'opacity_supported': False, 'compression_supported': False},
+               'png': {'gdal_name': 'PNG', 'opacity_supported': True, 'compression_supported': False}
                }
     if out_image_format.lower() in ['just_bypass']:  # ['tif', 'tiff', 'bil']:
         _create_folder(output_dir)
@@ -186,6 +187,16 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
         _create_folder(output_dir)
 
         opacity_supported = formats.get(out_image_format).get('opacity_supported')
+        compression_supported = formats.get(out_image_format).get('compression_supported')
+        creationOptions = []
+        if compression_supported:
+            creationOptions.append(f"COMPRESS={compression.upper()}")
+            if compression.upper() == "JPEG" and out_image_format in ['tif', 'tiff']:
+                creationOptions.append(f"JPEG_QUALITY={jpeg_quality}")
+        if not compression_supported:
+            if compression.upper() == "JPEG" and out_image_format in ["jpg", "jpeg"]:
+                creationOptions.append(f"QUALITY={jpeg_quality}")
+
         if processing_method in ["mask", "bounds"]:
             wgs84 = pyproj.CRS('EPSG:4326')
             wgs84_pseudo = pyproj.CRS('EPSG:3857')
@@ -201,15 +212,17 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
                                outputBoundsSRS='EPSG:4326',
                                cutlineDSName=shp,
                                cropToCutline=True,
-                               dstAlpha=opacity_supported)
+                               dstAlpha=opacity_supported,
+                               creationOptions=creationOptions)
 
         elif processing_method == "bounds":
             raster = gdal.Warp(out_raster, in_raster,
                                outputBounds=list(wgs84_geom.bounds),
                                outputBoundsSRS='EPSG:4326',
-                               dstAlpha=opacity_supported)
+                               dstAlpha=opacity_supported,
+                               creationOptions=creationOptions)
         else:
-            raster = gdal.Warp(out_raster, in_raster, dstAlpha=opacity_supported)
+            raster = gdal.Warp(out_raster, in_raster, dstAlpha=opacity_supported, creationOptions=creationOptions)
 
         # raster = gdal.Translate(out_raster, in_raster)
         rmtree(scratch_dir_georeg, ignore_errors=True)
@@ -295,9 +308,9 @@ def _download_tiles(in_params, out_manifest):
         return m
 
 
-def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_format, processing_method, out_manifest,
-                   num_threads, surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude,
-                   rate_limit_mode, geom=None):
+def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_format, compression, jpeg_quality,
+                   processing_method, out_manifest, num_threads, surveyid, tileResourceType, tertiary, since, until,
+                   mosaic, include, exclude, rate_limit_mode, geom=None):
 
     fid = 0
     jobs = []
@@ -345,17 +358,17 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
     else:
         zzl_scratch_folder = tiles_folder / f'scratch_{zzl}'
         _create_folder(zzl_scratch_folder)
-        georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_image_format, image_basename=zzl,
-                           geom=geom, processing_method=processing_method)
+        georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_image_format, compression,
+                           jpeg_quality, image_basename=zzl, geom=geom, processing_method=processing_method)
         rmtree(zzl_tiles_folder)
         rmtree(zzl_scratch_folder)
     return results
 
 
 def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
-                    group_zoom_level, processing_method=None, surveyid=None, tileResourceType='Vert', tertiary=None,
-                    since=None, until=None, mosaic=None, include=None, exclude=None, rate_limit_mode="slow",
-                    max_cores=None, max_threads=None):
+                    compression=None, jpeg_quality=75, group_zoom_level=13, processing_method=None, surveyid=None,
+                    tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None, include=None,
+                    exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
 
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -448,9 +461,9 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                 jobs = []
                 for zzl in zip_d:
                     jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, zzl, zip_d,
-                                                out_image_format, processing_method, out_manifest, num_threads,
-                                                surveyid, tileResourceType, tertiary, since, until, mosaic, include,
-                                                exclude, rate_limit_mode, geom=geom_mask))
+                                                out_image_format, compression, jpeg_quality, processing_method,
+                                                out_manifest, num_threads, surveyid, tileResourceType, tertiary, since,
+                                                until, mosaic, include, exclude, rate_limit_mode, geom=geom_mask))
                 # results = []
                 for job in jobs:
                     result = job.result()
@@ -508,6 +521,8 @@ if __name__ == "__main__":
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
     remove_holes = True
     out_image_format = 'tif'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
+    jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
     group_zoom_level = 13
     processing_method = 'mask'  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
     out_manifest = True
@@ -527,5 +542,5 @@ if __name__ == "__main__":
     rate_limit_mode = 'slow'
 
     tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
-                    group_zoom_level, processing_method, surveyid, tileResourceType, tertiary, since, until, mosaic,
-                    include, exclude, rate_limit_mode)
+                    compression, jpeg_quality, group_zoom_level, processing_method, surveyid, tileResourceType, tertiary, since,
+                    until, mosaic, include, exclude, rate_limit_mode)
