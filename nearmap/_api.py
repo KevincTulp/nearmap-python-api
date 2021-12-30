@@ -31,7 +31,7 @@ def _format_polygon(polygon, lat_lon_direction):
 
 def _download_file(url, out_file):
     r = get(url, stream=True)
-    #print(r.headers)
+    # print(r.headers)
     if r.status_code == 200:
         with open(out_file, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024):
@@ -43,7 +43,6 @@ def _download_file(url, out_file):
 
 
 def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
-
     def _image_get_op(url, out_format, out_image):
         iter = 1
         if out_image.lower() == "bytes":
@@ -56,7 +55,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 try:
                     data = get(url, allow_redirects=True)
                     return data
-                    #return get(url, allow_redirects=True)
+                    # return get(url, allow_redirects=True)
                 except (ConnectionError, ConnectionResetError) as e:
                     backoff_time = iter * 0.03
                     if backoff_time >= 1800:
@@ -74,16 +73,17 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
     image = _image_get_op(url, out_format, out_image)
     response_code = image.status_code
     if response_code != 200:
-        #pass
+        # pass
         print(_http_response_error_reporting(response_code))
-
+    if response_code == 404:
+        return None
     # Begin Rate Limiting if response = 429
-    #if response_code == 429:  # If user hits default rate limit pause for milliseconds.
+    # if response_code == 429:  # If user hits default rate limit pause for milliseconds.
     if response_code == 429 or str(response_code)[:1] == "5":
         sleep(0.1)
         image = _image_get_op(url, out_format, out_image)
         response_code = image.status_code
-    #if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
+    # if response_code == 429:  # If rate limit is still hit implement slow or fast rate_limit_mode
     if response_code == 429 or str(response_code)[:1] == "5":
         rate_limit_modes = ["slow", "fast"]
         assert rate_limit_mode.lower() in rate_limit_modes, f"Error: Rate_limit_mode not a member of " \
@@ -94,7 +94,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 rate_limit_reset = image.headers["x-ratelimit-reset"]
                 then_utc = datetime.fromtimestamp(float(rate_limit_reset), timezone.utc)
                 now_utc = datetime.now(timezone.utc)
-                delay_time = abs((now_utc - then_utc) / timedelta(seconds=1))+1
+                delay_time = abs((now_utc - then_utc) / timedelta(seconds=1)) + 1
                 print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for {delay_time} "
                       f"seconds")
                 sleep(delay_time)
@@ -102,8 +102,8 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 response_code = image.status_code
 
         elif rate_limit_mode.lower() == "fast":
-            delay_time = 0.3    # 0.3 seconds
-            max_delay_time = 1800   # 30 minutes
+            delay_time = 0.3  # 0.3 seconds
+            max_delay_time = 1800  # 30 minutes
             while response_code == 429:
                 rate_limit = image.headers["x-ratelimit-limit"]
                 print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for "
@@ -122,9 +122,9 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
         base_path = out_image.replace('.img', '')
         if image_format == "jpeg":
             path = f'{base_path}.jpg'
-        elif image_format != "jpeg":
+        elif image_format == "png":
             path = f'{base_path}.png'
-        #source_format = Path(out_image)
+        # source_format = Path(out_image)
         open(path, 'wb').write(image.content)
         return path
 
@@ -160,7 +160,6 @@ def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None
                    include=None, exclude=None, res=None, zoom_level=None):
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
     from nearmap._download import ortho_imagery_downloader
-
 
     coords = get_coords(in_file=polygon)
     grid = create_grid(coords)
@@ -200,7 +199,6 @@ def download_ai(base_url, api_key, polygon, out_folder, since=None, until=None, 
 def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=None, until=None, mosaic=None,
                    include=None, exclude=None, packs=None, out_ai_format="json", out_ortho_format="json",
                    lat_lon_direction="yx", surveyResourceID=None):
-
     from nearmap._download import ortho_imagery_downloader, dsm_imagery_downloader, generate_ai_pack
     from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid
 
@@ -226,6 +224,7 @@ def download_multi(base_url, api_key, polygon, out_folder, tertiary=None, since=
 
     return slippy_grid, ortho_out, dsm_out, ai_out
 
+
 ###############
 #  NEARMAP AI
 #############
@@ -237,7 +236,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
     if not return_url:
         polygon = _format_polygon(polygon, lat_lon_direction)
         # TODO: determine how to implement surveyResourceID parameter
-        url = f"{base_url}ai/features/v4/features.json?polygon={polygon.replace(' ','')}"
+        url = f"{base_url}ai/features/v4/features.json?polygon={polygon.replace(' ', '')}"
     elif return_url:
         url = f"{base_url}" + "ai/features/v4/features.json?polygon={polygon}"
     if since:
@@ -407,6 +406,7 @@ def aiPacksV4(base_url, api_key, out_format="json", return_url=False):
     else:
         print(f"Error: output format {out_format} not a viable option")
         exit()
+
 
 #####################
 #  NEARMAP Coverage
