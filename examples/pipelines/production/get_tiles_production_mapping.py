@@ -292,7 +292,7 @@ def _download_tiles(in_params, out_manifest):
     fid = in_params.get('id')
     ext = Path(path).suffix.replace(".", "")
     # print(url, ext, path)
-    image = _get_image(url=url, out_format=ext, out_image=path.as_posix(), rate_limit_mode="slow")
+    image = _get_image(url=url, out_format=ext, out_image=path.as_posix(), rate_limit_mode="slow", quiet=True)
     if image:
         if not out_manifest:
             m = dict()
@@ -310,7 +310,7 @@ def _download_tiles(in_params, out_manifest):
             m['x'] = in_params.get('x')
             m['y'] = in_params.get('y')
             m['zoom'] = in_params.get('zoom')
-            m['zip_zoom'] = in_params.get('zip_zoom')
+            m['quadkey'] = in_params.get('quadkey')
             m['success'] = True
             m['file'] = image
             return m
@@ -353,7 +353,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_im
             temp['x'] = t.x
             temp['y'] = t.y
             temp['zoom'] = t.z
-            temp['zip_zoom'] = quadkey
+            temp['quadkey'] = quadkey
             jobs.append(executor.submit(_download_tiles, temp, out_manifest))
             fid += 1
     results = []
@@ -505,7 +505,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                 ts = time.time()
                 files.set_postfix({'status': 'Begin Exporting Result Extents to geojson file'})
                 manifest_extents_file = project_folder / "manifest_extents.geojson"
-                result.dissolve(by="zip_zoom").to_file(manifest_extents_file, driver='GeoJSON')
+                result.dissolve(by="quadkey").to_file(manifest_extents_file, driver='GeoJSON')
                 del result
                 te = time.time()
                 files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
@@ -539,11 +539,11 @@ if __name__ == "__main__":
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
     remove_holes = True
-    out_image_format = 'jpg'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'tif'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
     jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
     group_zoom_level = 13
-    processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
+    processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon but takes much longer to process
     out_manifest = True
 
     ###############################
