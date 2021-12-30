@@ -272,8 +272,8 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
     else:
         url += "&apikey={api_key}"
 
-    supported_export_formats = ["pandas", "pd", "geopandas", "gpd", "geojson", "shp", "gpkg"]
-    supported_file_formats = ["geojson", "shp", "gpkg"]
+    supported_export_formats = ["pandas", "pd", "geopandas", "gpd", "geojson", "shp", "gpkg", "csv", "xlsx", "parquet"]
+    supported_file_formats = ["geojson", "shp", "gpkg", "csv", "xlsx", "parquet"]
     if out_format == "json":
         if not return_url:
             return get(url).json()
@@ -343,8 +343,19 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             return None
         else:
             gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
-            if out_format in ["pandas", "pd"]:
-                return pd.DataFrame(gdf)
+            if out_format in ["pandas", "pd", "csv", "xlsx", "parquet", "feather"]:
+                df = pd.DataFrame(gdf)
+                if out_format in ["pandas", "pd"]:
+                    return df
+                elif out_format == "parquet":
+                    df.to_parquet(output)
+                elif out_format == "feather":
+                    df.to_feature(output)
+                elif out_format == "csv":
+                    df.to_csv(output, index=False)
+                elif out_format == "xlsx":
+                    df.to_excel(output)
+                    #df.to_excel(output, engine='xlsxwriter')
             if out_format in ["geopandas", "gpd"]:
                 return gdf
             elif out_format == "geojson" and output is None:
