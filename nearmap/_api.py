@@ -42,7 +42,7 @@ def _download_file(url, out_file):
         print(_http_response_error_reporting(r.status_code))
 
 
-def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
+def _get_image(url, out_format, out_image, rate_limit_mode="slow", quiet=False):
     def _image_get_op(url, out_format, out_image):
         iter = 1
         if out_image.lower() == "bytes":
@@ -74,7 +74,8 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
     response_code = image.status_code
     if response_code != 200:
         # pass
-        print(_http_response_error_reporting(response_code))
+        if not quiet:
+            print(_http_response_error_reporting(response_code))
     if response_code == 404:
         return None
     # Begin Rate Limiting if response = 429
@@ -95,8 +96,9 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
                 then_utc = datetime.fromtimestamp(float(rate_limit_reset), timezone.utc)
                 now_utc = datetime.now(timezone.utc)
                 delay_time = abs((now_utc - then_utc) / timedelta(seconds=1)) + 1
-                print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for {delay_time} "
-                      f"seconds")
+                if not quiet:
+                    print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for "
+                          f"{delay_time} seconds")
                 sleep(delay_time)
                 image = _image_get_op(url, out_format, out_image)
                 response_code = image.status_code
@@ -106,8 +108,9 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow"):
             max_delay_time = 1800  # 30 minutes
             while response_code == 429:
                 rate_limit = image.headers["x-ratelimit-limit"]
-                print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for "
-                      f"{delay_time} seconds")
+                if not quiet:
+                    print(f"Rate Limit Exceeded. Reached hourly limit of {rate_limit}. Begin Throttling for "
+                          f"{delay_time} seconds")
                 sleep(delay_time)
                 image = _image_get_op(url, out_format, out_image)
                 response_code = image.status_code
