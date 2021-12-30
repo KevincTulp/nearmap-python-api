@@ -132,6 +132,7 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, comp
     tile_dir = None
     if isinstance(in_tiles, list):
         tile_list = in_tiles
+
         tile_dir = Path(tile_list[0]).parents[0]
     else:
         in_tiles = Path(in_tiles)
@@ -153,16 +154,29 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, comp
     _create_folder(scratch_dir_georeg)
 
     georeferenced_tiles = []
+
+    nodata_value = 0
     for f in tile_list:
         x, y, z = f.stem.split("_")
         bounds = tile_edges(int(x), int(y), int(z))
-        f_out = (scratch_dir_georeg / f'{f.name}').as_posix()
-        gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+        ext = f.suffix
+        f_out = None
+        if ext == ".jpg":
+            # f_out = (scratch_dir_georeg / f'{f.name}').as_posix()
+            #f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+            f_out = (scratch_dir_georeg / f'{f.stem}.jpg').as_posix()
+            #gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, bandList=[1, 2, 3, "mask"])
+            gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, noData=0, bandList=[1, 2, 3])
+        elif ext == ".png":
+            #f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+            f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+            #gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+            gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, noData=255, bandList=[1, 2, 3])
         georeferenced_tiles.append(f_out)
 
     def _merge_tiles(in_rasters, out_raster, out_image_format):
         # Only options - GTiff (the default) or HFA (Erdas Imagine)
-        parameters = ['', '-o', out_raster, '-of', out_image_format, '-q'] + in_rasters
+        parameters = ['', '-o', out_raster, '-of', out_image_format, '-a_nodata', str(0), '-q'] + in_rasters
         gdal_merge.main(parameters)
         return out_raster
 
@@ -171,69 +185,62 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, comp
                'jpg': {'gdal_name': 'JPG', 'opacity_supported': False, 'compression_supported': False},
                'png': {'gdal_name': 'PNG', 'opacity_supported': True, 'compression_supported': False}
                }
-    if out_image_format.lower() in ['just_bypass']:  # ['tif', 'tiff', 'bil']:
-        _create_folder(output_dir)
-        out_raster = output_dir / f'{image_basename}.{out_image_format}'
-        raster = _merge_tiles(georeferenced_tiles, out_raster.as_posix(), formats.get(out_image_format).get('gdal_name'))
-        rmtree(scratch_dir_georeg, ignore_errors=True)
-        return raster
+    scratch_tif_dir = scratch_dir / 'scratch_tif'
+    _create_folder(scratch_tif_dir)
+    out_raster = (scratch_tif_dir / f'{image_basename}.tif').as_posix()
+    #try:
+    in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
+    out_raster = (output_dir / f'{image_basename}.{out_image_format}').as_posix()
+    _create_folder(output_dir)
+
+    opacity_supported = formats.get(out_image_format).get('opacity_supported')
+    compression_supported = formats.get(out_image_format).get('compression_supported')
+    creationOptions = []
+    if compression_supported:
+        creationOptions.append(f"COMPRESS={compression.upper()}")
+        if compression.upper() == "JPEG" and out_image_format in ['tif', 'tiff']:
+            creationOptions.append(f"JPEG_QUALITY={jpeg_quality}")
+    if not compression_supported:
+        if compression.upper() == "JPEG" and out_image_format in ["jpg", "jpeg"]:
+            creationOptions.append(f"QUALITY={jpeg_quality}")
+
+    if processing_method in ["mask", "bounds"]:
+        wgs84 = pyproj.CRS('EPSG:4326')
+        wgs84_pseudo = pyproj.CRS('EPSG:3857')
+
+        project = pyproj.Transformer.from_crs(wgs84_pseudo, wgs84, always_xy=True).transform
+        wgs84_geom = ops.transform(project, geom).intersection(get_raster_geom(in_raster, method="polygon"))
+
+    if processing_method == "mask":
+        shp = shapely_polygon_to_shp(in_shapely_geom=wgs84_geom, crs='EPSG:4326',
+                                     out_shapefile=Path(scratch_tif_dir) / f'{image_basename}.shp')
+        raster = gdal.Warp(out_raster, in_raster,
+                           outputBounds=list(wgs84_geom.bounds),
+                           outputBoundsSRS='EPSG:4326',
+                           cutlineDSName=shp,
+                           cropToCutline=True,
+                           dstAlpha=opacity_supported,
+                           creationOptions=creationOptions)
+
+    elif processing_method == "bounds":
+        raster = gdal.Warp(out_raster, in_raster,
+                           outputBounds=list(wgs84_geom.bounds),
+                           outputBoundsSRS='EPSG:4326',
+                           dstAlpha=opacity_supported,
+                           creationOptions=creationOptions)
     else:
-        scratch_tif_dir = scratch_dir / 'scratch_tif'
-        _create_folder(scratch_tif_dir)
-        out_raster = (scratch_tif_dir / f'{image_basename}.tif').as_posix()
-        #try:
-        in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
-        out_raster = (output_dir / f'{image_basename}.{out_image_format}').as_posix()
-        _create_folder(output_dir)
+        raster = gdal.Warp(out_raster, in_raster, dstAlpha=opacity_supported, creationOptions=creationOptions)
 
-        opacity_supported = formats.get(out_image_format).get('opacity_supported')
-        compression_supported = formats.get(out_image_format).get('compression_supported')
-        creationOptions = []
-        if compression_supported:
-            creationOptions.append(f"COMPRESS={compression.upper()}")
-            if compression.upper() == "JPEG" and out_image_format in ['tif', 'tiff']:
-                creationOptions.append(f"JPEG_QUALITY={jpeg_quality}")
-        if not compression_supported:
-            if compression.upper() == "JPEG" and out_image_format in ["jpg", "jpeg"]:
-                creationOptions.append(f"QUALITY={jpeg_quality}")
-
-        if processing_method in ["mask", "bounds"]:
-            wgs84 = pyproj.CRS('EPSG:4326')
-            wgs84_pseudo = pyproj.CRS('EPSG:3857')
-
-            project = pyproj.Transformer.from_crs(wgs84_pseudo, wgs84, always_xy=True).transform
-            wgs84_geom = ops.transform(project, geom).intersection(get_raster_geom(in_raster, method="polygon"))
-
-        if processing_method == "mask":
-            shp = shapely_polygon_to_shp(in_shapely_geom=wgs84_geom, crs='EPSG:4326',
-                                         out_shapefile=Path(scratch_tif_dir) / f'{image_basename}.shp')
-            raster = gdal.Warp(out_raster, in_raster,
-                               outputBounds=list(wgs84_geom.bounds),
-                               outputBoundsSRS='EPSG:4326',
-                               cutlineDSName=shp,
-                               cropToCutline=True,
-                               dstAlpha=opacity_supported,
-                               creationOptions=creationOptions)
-
-        elif processing_method == "bounds":
-            raster = gdal.Warp(out_raster, in_raster,
-                               outputBounds=list(wgs84_geom.bounds),
-                               outputBoundsSRS='EPSG:4326',
-                               dstAlpha=opacity_supported,
-                               creationOptions=creationOptions)
-        else:
-            raster = gdal.Warp(out_raster, in_raster, dstAlpha=opacity_supported, creationOptions=creationOptions)
-
-        # raster = gdal.Translate(out_raster, in_raster)
+    # raster = gdal.Translate(out_raster, in_raster)
+    rmtree(scratch_dir_georeg, ignore_errors=True)
+    rmtree(scratch_tif_dir, ignore_errors=True)
+    return raster
+    '''
+    except Exception as e:
+        print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
         rmtree(scratch_dir_georeg, ignore_errors=True)
-        rmtree(scratch_tif_dir, ignore_errors=True)
-        return raster
-        '''
-        except Exception as e:
-            print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
-            rmtree(scratch_dir_georeg, ignore_errors=True)
-            return None
-        '''
+        return None
+    '''
 
 
 def shapely_polygon_to_shp(in_shapely_geom, crs, out_shapefile):
@@ -286,36 +293,39 @@ def _download_tiles(in_params, out_manifest):
     ext = Path(path).suffix.replace(".", "")
     # print(url, ext, path)
     image = _get_image(url=url, out_format=ext, out_image=path.as_posix(), rate_limit_mode="slow")
-    if not out_manifest:
-        m = dict()
-        m['id'] = fid
-        m['file'] = image
-        return m
-    if out_manifest:
-        x = in_params.get('x')
-        y = in_params.get('y')
-        z = in_params.get('zoom')
-        bounds = tile_edges(x, y, z)
-        m = dict()
-        m['geometry'] = box(bounds[0], bounds[1], bounds[2], bounds[3])
-        m['id'] = fid
-        m['x'] = in_params.get('x')
-        m['y'] = in_params.get('y')
-        m['zoom'] = in_params.get('zoom')
-        m['zip_zoom'] = in_params.get('zip_zoom')
-        m['success'] = True
-        m['file'] = image
-        return m
+    if image:
+        if not out_manifest:
+            m = dict()
+            m['id'] = fid
+            m['file'] = image
+            return m
+        if out_manifest:
+            x = in_params.get('x')
+            y = in_params.get('y')
+            z = in_params.get('zoom')
+            bounds = tile_edges(x, y, z)
+            m = dict()
+            m['geometry'] = box(bounds[0], bounds[1], bounds[2], bounds[3])
+            m['id'] = fid
+            m['x'] = in_params.get('x')
+            m['y'] = in_params.get('y')
+            m['zoom'] = in_params.get('zoom')
+            m['zip_zoom'] = in_params.get('zip_zoom')
+            m['success'] = True
+            m['file'] = image
+            return m
+    else:
+        return None
 
 
-def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_format, compression, jpeg_quality,
+def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_image_format, compression, jpeg_quality,
                    processing_method, out_manifest, num_threads, surveyid, tileResourceType, tertiary, since, until,
                    mosaic, include, exclude, rate_limit_mode, geom=None):
 
     fid = 0
     jobs = []
-    zzl_tiles_folder = tiles_folder / f'{zzl}'
-    _create_folder(zzl_tiles_folder)
+    quadkey_tiles_folder = tiles_folder / f'{quadkey}'
+    _create_folder(quadkey_tiles_folder)
 
     api_key = nearmap.api_key
     out_format = 'img'
@@ -330,11 +340,11 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
                                       return_url=True)
 
     with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
-        for t in zip_d.get(zzl):
+        for t in zip_d.get(quadkey):
             z = t.z
             x = t.x
             y = t.y
-            path = zzl_tiles_folder / f'{t.x}_{t.y}_{t.z}.img'
+            path = quadkey_tiles_folder / f'{t.x}_{t.y}_{t.z}.img'
             url = eval(url_template)
             temp = dict()
             temp['id'] = fid
@@ -343,26 +353,30 @@ def _process_tiles(nearmap, project_folder, tiles_folder, zzl, zip_d, out_image_
             temp['x'] = t.x
             temp['y'] = t.y
             temp['zoom'] = t.z
-            temp['zip_zoom'] = zzl
+            temp['zip_zoom'] = quadkey
             jobs.append(executor.submit(_download_tiles, temp, out_manifest))
             fid += 1
     results = []
     for job in jobs:
         result = job.result()
-        results.append(result)
-    if out_image_format.lower() == 'zip':
-        zip_dir(zzl_tiles_folder, project_folder / f'{zzl}.zip')
-        rmtree(zzl_tiles_folder)
-    elif out_image_format is None:
-        pass
+        if result is not None:
+            results.append(result)
+    if any(results):
+        if out_image_format.lower() == 'zip':
+            zip_dir(quadkey_tiles_folder, project_folder / f'{quadkey}.zip')
+            rmtree(quadkey_tiles_folder)
+        elif out_image_format is None:
+            pass
+        else:
+            quadkey_scratch_folder = tiles_folder / f'scratch_{quadkey}'
+            _create_folder(quadkey_scratch_folder)
+            georeference_tiles(quadkey_tiles_folder, project_folder, quadkey_scratch_folder, out_image_format, compression,
+                               jpeg_quality, image_basename=quadkey, geom=geom, processing_method=processing_method)
+            rmtree(quadkey_tiles_folder)
+            rmtree(quadkey_scratch_folder)
+        return results
     else:
-        zzl_scratch_folder = tiles_folder / f'scratch_{zzl}'
-        _create_folder(zzl_scratch_folder)
-        georeference_tiles(zzl_tiles_folder, project_folder, zzl_scratch_folder, out_image_format, compression,
-                           jpeg_quality, image_basename=zzl, geom=geom, processing_method=processing_method)
-        rmtree(zzl_tiles_folder)
-        rmtree(zzl_scratch_folder)
-    return results
+        return None
 
 
 def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
@@ -407,7 +421,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                 geoms.append(wm_geom)
                 #exit()
         if processing_method in ["mask", "bounds"]:
-            geom_mask = ops.cascaded_union(geoms)
+            geom_mask = ops.unary_union(geoms)
 
         # Find the covering.
         tiles = []
@@ -459,43 +473,48 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
             with tqdm(total=len(zip_d)) as progress:
                 jobs = []
-                for zzl in zip_d:
-                    jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, zzl, zip_d,
+                for quadkey in zip_d:
+                    jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, quadkey, zip_d,
                                                 out_image_format, compression, jpeg_quality, processing_method,
                                                 out_manifest, num_threads, surveyid, tileResourceType, tertiary, since,
                                                 until, mosaic, include, exclude, rate_limit_mode, geom=geom_mask))
                 # results = []
                 for job in jobs:
                     result = job.result()
-                    r_tiles.extend(result)
+                    if result is not None:
+                        r_tiles.extend(result)
                     progress.update()
         te = time.time()
-        files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'})
-        del zip_d
-        if out_manifest:
-            ts = time.time()
-            files.set_postfix({'status': 'Begin Loading Manifest to GeoDataFrame'})
-            # print(f'Begin Loading Manifest to GeoDataFrame')
-            result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
-            del r_tiles
-            te = time.time()
-            files.set_postfix({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
-            files.set_postfix({'status': 'Begin Exporting Results to geojson file'})
-            ts = time.time()
-            manifest_file = project_folder / "manifest.geojson"
-            result.to_file(manifest_file, driver='GeoJSON')
-            te = time.time()
-            files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
-            ts = time.time()
-            files.set_postfix({'status': 'Begin Exporting Result Extents to geojson file'})
-            manifest_extents_file = project_folder / "manifest_extents.geojson"
-            result.dissolve(by="zip_zoom").to_file(manifest_extents_file, driver='GeoJSON')
-            del result
-            te = time.time()
-            files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
-        rmtree(tiles_folder, ignore_errors=True)
-        end = time.time()  # End Clocking
-        files.set_postfix({'status': f"Processed in {end - start} seconds"})
+        if len(r_tiles) > 0:
+            files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'})
+            del zip_d
+            if out_manifest:
+                ts = time.time()
+                files.set_postfix({'status': 'Begin Loading Manifest to GeoDataFrame'})
+                # print(f'Begin Loading Manifest to GeoDataFrame')
+                result = gpd.GeoDataFrame(r_tiles).set_crs('epsg:4326')
+                del r_tiles
+                te = time.time()
+                files.set_postfix({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
+                files.set_postfix({'status': 'Begin Exporting Results to geojson file'})
+                ts = time.time()
+                manifest_file = project_folder / "manifest.geojson"
+                result.to_file(manifest_file, driver='GeoJSON')
+                te = time.time()
+                files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
+                ts = time.time()
+                files.set_postfix({'status': 'Begin Exporting Result Extents to geojson file'})
+                manifest_extents_file = project_folder / "manifest_extents.geojson"
+                result.dissolve(by="zip_zoom").to_file(manifest_extents_file, driver='GeoJSON')
+                del result
+                te = time.time()
+                files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
+            rmtree(tiles_folder, ignore_errors=True)
+            end = time.time()  # End Clocking
+            files.set_postfix({'status': f"Processed in {end - start} seconds"})
+        else:
+            print("No Imagery Detected & Downloaded for Area of Interest.. "
+                  "Check Nearmap coverage to ensure coverage exists")
 
 
 if __name__ == "__main__":
@@ -520,11 +539,11 @@ if __name__ == "__main__":
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
     remove_holes = True
-    out_image_format = 'tif'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'jpg'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
     compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
     jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
     group_zoom_level = 13
-    processing_method = 'mask'  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
+    processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
     out_manifest = True
 
     ###############################
