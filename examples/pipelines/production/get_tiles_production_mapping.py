@@ -127,7 +127,7 @@ def _exception_info():
 
 
 def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, compression, jpeg_quality, image_basename,
-                       geom, processing_method):
+                       geom, processing_method=None):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -196,6 +196,7 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, comp
     opacity_supported = formats.get(out_image_format).get('opacity_supported')
     compression_supported = formats.get(out_image_format).get('compression_supported')
     creationOptions = []
+    wgs84_geom = None
     if compression_supported:
         creationOptions.append(f"COMPRESS={compression.upper()}")
         if compression.upper() == "JPEG" and out_image_format in ['tif', 'tiff']:
@@ -364,7 +365,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_im
     if any(results):
         if out_image_format.lower() == 'zip':
             zip_dir(quadkey_tiles_folder, project_folder / f'{quadkey}.zip')
-            rmtree(quadkey_tiles_folder)
+            rmtree(quadkey_tiles_folder, ignore_errors=True)
         elif out_image_format is None:
             pass
         else:
@@ -372,8 +373,8 @@ def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_im
             _create_folder(quadkey_scratch_folder)
             georeference_tiles(quadkey_tiles_folder, project_folder, quadkey_scratch_folder, out_image_format, compression,
                                jpeg_quality, image_basename=quadkey, geom=geom, processing_method=processing_method)
-            rmtree(quadkey_tiles_folder)
-            rmtree(quadkey_scratch_folder)
+            rmtree(quadkey_tiles_folder, ignore_errors=True)
+            rmtree(quadkey_scratch_folder, ignore_errors=True)
         return results
     else:
         return None
@@ -539,12 +540,12 @@ if __name__ == "__main__":
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
     remove_holes = True
-    out_image_format = 'tif'  # 'zip', 'tif', 'jpg  # Attributes grid with necessary values for zipping using zipper.py
+    out_image_format = 'tif'  # 'zip', 'tif', 'jpg
     compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
     jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
     group_zoom_level = 13
     processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon but takes much longer to process
-    out_manifest = True
+    out_manifest = True  # Output a manifest of data extracted
 
     ###############################
     # Survey Specific User Params
