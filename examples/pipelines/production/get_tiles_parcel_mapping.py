@@ -5,7 +5,7 @@ from pathlib import Path, PurePath
 from math import log, tan, radians, cos, atan, sinh, pi, degrees, floor, ceil
 import fiona
 from fiona.transform import transform_geom
-from shapely.geometry import MultiPolygon, Polygon, box, shape
+from shapely.geometry import MultiPolygon, Polygon, box, shape, mapping
 from shapely import ops
 import pyproj
 import tiletanic
@@ -20,6 +20,8 @@ import os
 import sys
 from os import cpu_count
 from osgeo import gdal
+from osgeo.gdalconst import GA_ReadOnly
+
 try:
     from osgeo_utils import gdal_merge
 except ImportError:
@@ -81,6 +83,33 @@ def tile_edges(x, y, z):
     return [lon1, lat1, lon2, lat2]
 
 
+def get_raster_geom(in_raster, method=None, as_str=False):
+    data = gdal.Open(in_raster, GA_ReadOnly)
+    geo_transform = data.GetGeoTransform()
+    xmin = geo_transform[0]
+    ymax = geo_transform[3]
+    xmax = xmin + geo_transform[1] * data.RasterXSize
+    ymin = ymax + geo_transform[5] * data.RasterYSize
+    ret_val = None
+    if method in [None, "extent"]:
+        if as_str:
+            ret_val = f"{xmin} {ymin} {xmax} {ymax}"
+        else:
+            ret_val = [xmin, ymin, xmax, ymax]
+    if method == "bounds":
+        if as_str:
+            f"{xmin} {ymin} {xmin} {ymax} {xmax} {ymax} {xmax} {ymin}"
+        else:
+            ret_val = [[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
+    if method == "polygon":
+        if as_str:
+            f"{xmin} {ymin} {xmin} {ymax} {xmax} {ymax} {xmax} {ymin} {xmin} {ymin}"
+        else:
+            ret_val = Polygon([[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin], [xmin, ymin]])
+    data = None
+    return ret_val
+
+
 def georeference_tile(in_file, out_file, x, y, zoom):
     bounds = tile_edges(x, y, zoom)
     # filename, extension = os.path.splitext(path)
@@ -100,7 +129,8 @@ def _exception_info():
     return f'Exception type: {exception_type} | File name: {filename}, Line number: {line_number}'
 
 
-def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, image_basename, geom, processing_method=None):
+def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, compression, jpeg_quality, image_basename,
+                       geom, processing_method=None):
     tile_list = None
     tile_dir = None
     if isinstance(in_tiles, list):
@@ -130,76 +160,96 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, imag
         if f.is_file():
             x, y, z = f.stem.split("_")
             bounds = tile_edges(int(x), int(y), int(z))
-            f_out = scratch_dir_georeg / f'{f.name}'
-            try:
-                gdal.Translate(f_out.as_posix(), f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
-            except Exception as e:
-                print(f'error: {image_basename} | failed to translate | {e} | {_exception_info()}')
-            if f_out.is_file():
-                georeferenced_tiles.append(f_out.resolve().as_posix())
+            ext = f.suffix
+            f_out = None
+            if ext == ".jpg":
+                # f_out = (scratch_dir_georeg / f'{f.name}').as_posix()
+                # f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+                f_out = (scratch_dir_georeg / f'{f.stem}.jpg').as_posix()
+                # gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, bandList=[1, 2, 3, "mask"])
+                gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, noData=0,
+                               bandList=[1, 2, 3])
+            elif ext == ".png":
+                # f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+                f_out = (scratch_dir_georeg / f'{f.stem}.tif').as_posix()
+                # gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds)
+                gdal.Translate(f_out, f.as_posix(), outputSRS='EPSG:4326', outputBounds=bounds, noData=255,
+                               bandList=[1, 2, 3])
+            georeferenced_tiles.append(f_out)
 
     def _merge_tiles(in_rasters, out_raster, out_image_format):
         # Only options - GTiff (the default) or HFA (Erdas Imagine)
-        parameters = ['', '-o', out_raster, '-of', out_image_format, '-q'] + in_rasters
+        parameters = ['', '-o', out_raster, '-of', out_image_format, '-a_nodata', str(0), '-q'] + in_rasters
         gdal_merge.main(parameters)
         return out_raster
 
-    formats = {'tif': {'gdal_name': 'GTiff'},
-               'tiff': {'gdal_name': 'GTiff'},
-               'jpg': {'gdal_name': 'JPG'},
-               'png': {'gdal_name': 'PNG'}
+    formats = {'tif': {'gdal_name': 'GTiff', 'opacity_supported': True, 'compression_supported': True},
+               'tiff': {'gdal_name': 'GTiff', 'opacity_supported': True, 'compression_supported': True},
+               'jpg': {'gdal_name': 'JPG', 'opacity_supported': False, 'compression_supported': False},
+               'png': {'gdal_name': 'PNG', 'opacity_supported': True, 'compression_supported': False}
                }
-    if out_image_format.lower() in ['tif', 'tiff', 'bil']:
-        _create_folder(output_dir)
-        out_raster = output_dir / f'{image_basename}.{out_image_format}'
-        raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get(out_image_format).get('gdal_name'))
-        rmtree(scratch_dir_georeg, ignore_errors=True)
-        return raster
+
+    scratch_tif_dir = scratch_dir / 'scratch_tif'
+    _create_folder(scratch_tif_dir)
+    out_raster = (scratch_tif_dir / f'{image_basename}.tif').as_posix()
+    # try:
+    in_raster = _merge_tiles(georeferenced_tiles, out_raster, formats.get('tif').get('gdal_name'))
+    out_raster = (output_dir / f'{image_basename}.{out_image_format}').as_posix()
+    _create_folder(output_dir)
+
+    opacity_supported = formats.get(out_image_format).get('opacity_supported')
+    compression_supported = formats.get(out_image_format).get('compression_supported')
+    creationOptions = []
+    wgs84_geom = None
+    if compression_supported:
+        creationOptions.append(f"COMPRESS={compression.upper()}")
+        if compression.upper() == "JPEG" and out_image_format in ['tif', 'tiff']:
+            creationOptions.append(f"JPEG_QUALITY={jpeg_quality}")
+    if not compression_supported:
+        if compression.upper() == "JPEG" and out_image_format in ["jpg", "jpeg"]:
+            creationOptions.append(f"QUALITY={jpeg_quality}")
+
+    if processing_method in ["mask", "bounds"]:
+        wgs84 = pyproj.CRS('EPSG:4326')
+        wgs84_pseudo = pyproj.CRS('EPSG:3857')
+
+        project = pyproj.Transformer.from_crs(wgs84_pseudo, wgs84, always_xy=True).transform
+        wgs84_geom = ops.transform(project, geom).intersection(get_raster_geom(in_raster, method="polygon"))
+
+    if processing_method == "mask":
+        shp = shapely_polygon_to_shp(in_shapely_geom=wgs84_geom, crs='EPSG:4326',
+                                     out_shapefile=Path(scratch_tif_dir) / f'{image_basename}.shp')
+        raster = gdal.Warp(out_raster, in_raster,
+                           outputBounds=list(wgs84_geom.bounds),
+                           outputBoundsSRS='EPSG:4326',
+                           cutlineDSName=shp,
+                           cropToCutline=True,
+                           dstAlpha=opacity_supported,
+                           creationOptions=creationOptions)
+
+    elif processing_method == "bounds":
+        raster = gdal.Warp(out_raster, in_raster,
+                           outputBounds=list(wgs84_geom.bounds),
+                           outputBoundsSRS='EPSG:4326',
+                           dstAlpha=opacity_supported,
+                           creationOptions=creationOptions)
     else:
-        scratch_tif_dir = scratch_dir / 'scratch_tif'
-        _create_folder(scratch_tif_dir)
-        out_raster = scratch_tif_dir / f'{image_basename}.tif'
-        try:
-            in_raster = _merge_tiles(georeferenced_tiles, out_raster.as_posix(), formats.get('tif').get('gdal_name'))
-            out_raster = output_dir / f'{image_basename}.{out_image_format}'
-            _create_folder(output_dir)
+        raster = gdal.Warp(out_raster, in_raster, dstAlpha=opacity_supported, creationOptions=creationOptions)
 
-            if processing_method in ["mask", "bounds"]:
-                wgs84 = pyproj.CRS('EPSG:4326')
-                wgs84_pseudo = pyproj.CRS('EPSG:3857')
+    # raster = gdal.Translate(out_raster, in_raster)
+    rmtree(scratch_dir_georeg, ignore_errors=True)
+    rmtree(scratch_tif_dir, ignore_errors=True)
+    return raster
 
-                project = pyproj.Transformer.from_crs(wgs84_pseudo, wgs84, always_xy=True).transform
-                wgs84_geom = ops.transform(project, geom)
-
-            if processing_method == "mask":
-                shp = shapely_polygon_to_shp(wgs84_geom, Path(scratch_tif_dir) / f'{image_basename}.shp')
-
-                raster = gdal.Warp(out_raster.as_posix(), in_raster,
-                                   outputBounds=list(wgs84_geom.bounds),
-                                   outputBoundsSRS='EPSG:4326',
-                                   cutlineDSName=shp,
-                                   cropToCutline=True)
-
-            elif processing_method == "bounds":
-                raster = gdal.Warp(out_raster, in_raster,
-                                   outputBounds=list(wgs84_geom.bounds),
-                                   outputBoundsSRS='EPSG:4326')
-            else:
-                raster = gdal.Warp(out_raster, in_raster)
-
-            # raster = gdal.Translate(out_raster, in_raster)
-            rmtree(scratch_dir_georeg, ignore_errors=True)
-            rmtree(scratch_tif_dir, ignore_errors=True)
-            return raster
-        except Exception as e:
-            print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
-            rmtree(scratch_dir_georeg, ignore_errors=True)
-            return None
+    '''
+    except Exception as e:
+        print(f'error: {image_basename} | failed to merge | {e} | {_exception_info()}')
+        rmtree(scratch_dir_georeg, ignore_errors=True)
+        return None
+    '''
 
 
-def shapely_polygon_to_shp(in_shapely_geom, out_shapefile):
-    from shapely.geometry import mapping, Polygon
-    import fiona
+def shapely_polygon_to_shp(in_shapely_geom, crs, out_shapefile):
 
     # Define a polygon feature geometry with one attribute
     schema = {
@@ -208,7 +258,7 @@ def shapely_polygon_to_shp(in_shapely_geom, out_shapefile):
     }
 
     # Write a new Shapefile
-    with fiona.open(out_shapefile, 'w', 'ESRI Shapefile', schema) as c:
+    with fiona.open(out_shapefile, 'w', crs=crs, driver='ESRI Shapefile', schema=schema) as c:
         c.write({
             'geometry': mapping(in_shapely_geom),
             'properties': {'id': 1},
@@ -230,7 +280,6 @@ def zip_files(in_file_list, processing_folder, out_file_name):
 
     os.chdir(Path(processing_folder).parents[0])
     out_file = Path()
-    #shutil.move(src, dst)
 
 
 def zip_dir(source, destination):
@@ -239,9 +288,7 @@ def zip_dir(source, destination):
     file_format = base.suffix.strip(".")
     archive_from = Path(source).parents[0]
     archive_to = Path(source).name
-    #print(source, destination, archive_from, archive_to)
     make_archive(name, file_format, archive_from, archive_to)
-    #print(base.name, base.parents)
     move(base.name, base.parents[0].as_posix())
 
 
@@ -316,9 +363,9 @@ def _return_existing(in_params, image, fid, out_manifest):
         return m
 
 
-def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, processing_method,
-                   out_manifest, num_threads, surveyid, tileResourceType, tertiary, since, until, mosaic, include,
-                   exclude, rate_limit_mode):
+def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_image_format, compression, jpeg_quality,
+                   processing_method, out_manifest, num_threads, surveyid, tileResourceType, tertiary, since, until,
+                   mosaic, include, exclude, rate_limit_mode):
     fid_value = feature.get(fid)
     unique_id = feature.get('id')
     geom = feature.get('geom')
@@ -372,18 +419,16 @@ def _process_tiles(nearmap, project_folder, tiles_folder, feature, fid, out_imag
         for job in jobs:
             result = job.result()
             results.append(result)
-        # time.sleep(0.5)
         if out_image_format.lower() == 'zip':
             zip_dir(my_tiles_folder, project_folder / f'{fid_value}.zip')
-            #zip_files(in_file_list=results, processing_folder=tiles_folder, out_file_name=f"{zzl}.zip")
             rmtree(my_tiles_folder, ignore_errors=True)
         elif out_image_format is None:
             pass
         else:
             my_scratch_folder = tiles_folder / f'scratch_{fid_value}'
             _create_folder(my_scratch_folder)
-            georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format,
-                               image_basename=fid_value, geom=geom, processing_method=processing_method)
+            georeference_tiles(my_tiles_folder, project_folder, my_scratch_folder, out_image_format, compression,
+                               jpeg_quality, image_basename=fid_value, geom=geom, processing_method=processing_method)
             rmtree(my_tiles_folder, ignore_errors=True)
             rmtree(my_scratch_folder, ignore_errors=True)
         return results
@@ -395,9 +440,10 @@ def geom_bounds_poly(in_geom):
 
 
 def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method,
-                    buffer_distance, remove_holes, out_image_format, processing_method=None, surveyid=None,
-                    tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None, include=None,
-                    exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
+                    buffer_distance, remove_holes, out_image_format, compression=None, jpeg_quality=75,
+                    processing_method=None, surveyid=None, tileResourceType='Vert', tertiary=None, since=None,
+                    until=None, mosaic=None, include=None, exclude=None, rate_limit_mode="slow", max_cores=None,
+                    max_threads=None):
 
     input_geojson = Path(input_geojson).resolve()
     output_dir = Path(output_dir).resolve()
@@ -541,9 +587,9 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
             jobs = []
             for feature in features:
                 jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, feature, fid,
-                                            out_image_format, processing_method, out_manifest, num_threads, surveyid,
-                                            tileResourceType, tertiary, since, until, mosaic, include, exclude,
-                                            rate_limit_mode))
+                                            out_image_format, compression, jpeg_quality, processing_method,
+                                            out_manifest, num_threads, surveyid, tileResourceType, tertiary, since,
+                                            until, mosaic, include, exclude, rate_limit_mode))
             for job in jobs:
                 result = job.result()
                 if out_manifest:
@@ -595,6 +641,8 @@ if __name__ == "__main__":
     buffer_distance = 0  # Buffer Distance in Meters
     remove_holes = True  # Remove holes within polygons
     out_image_format = 'jpg'  # supported: 'jpg', 'tif', 'png'
+    compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
+    jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
     processing_method = 'mask'  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
     out_manifest = True  # Output a manifest of data extracted
 
@@ -613,5 +661,5 @@ if __name__ == "__main__":
     rate_limit_mode = 'slow'
 
     tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir, out_manifest, zoom, download_method,
-                    buffer_distance, remove_holes, out_image_format, processing_method, surveyid, tileResourceType,
-                    tertiary, since, until, mosaic, include, exclude, rate_limit_mode)
+                    buffer_distance, remove_holes, out_image_format, compression, jpeg_quality, processing_method,
+                    surveyid, tileResourceType, tertiary, since, until, mosaic, include, exclude, rate_limit_mode)
