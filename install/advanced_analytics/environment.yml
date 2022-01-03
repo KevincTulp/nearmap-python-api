@@ -22,7 +22,7 @@ dependencies:
   - conda-forge::scipy             # Python-based ecosystem of open-source software for mathematics, science, and engineering
   - conda-forge::dask              # Flexible library for parallel computing in Python
   - conda-forge::numpy             # Fundamental package for scientific computing with Python
-  - conda-forge::pandas            # Fast, powerful, flexible and easy to use open source data analysis and manipulation tool
+  - conda-forge::pandas            # Fast, powerful, flexible and easy to use open-source data analysis and manipulation tool
   - conda-forge::openpyxl          # A Python library to read/write Excel 2010 xlsx/xlsm files
   - conda-forge::scikit-learn      # Machine Learning in Python
   - conda-forge::jupyterlab        # for running example notebook
@@ -54,6 +54,7 @@ dependencies:
   - conda-forge::stringcase        # Convert string cases between camel case, pascal case, snake case etc...
   - conda-forge::pyarrow           # Python libraries for Apache Arrow
 #  - anaconda::boto3                # Install Amazon AWS Boto3
+  - conda-forge::pytest            # Simple and powerful testing with Python.
   - python>=3.8       # libraries require python 3.8  <-- Until GDAL Bindings properly support Python 3.9+
   - pip:
       - tiletanic     # Tools for Manipulating Geospatial Tiling Schemes

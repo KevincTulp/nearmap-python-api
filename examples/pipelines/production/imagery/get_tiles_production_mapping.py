@@ -535,7 +535,7 @@ if __name__ == "__main__":
     Example: "FL_1245025_MiamiBeach_Source.geojson"
     '''
 
-    input_dir = r'C:\Users\geoff.taylor\PycharmProjects\nearmap-python-api\examples\pipelines\production\source'
+    input_dir = r'/examples/pipelines/production/test_data'
     output_dir = r'C:\output_tiles'
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
