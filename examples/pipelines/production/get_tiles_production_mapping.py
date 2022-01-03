@@ -505,7 +505,7 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
                 ts = time.time()
                 files.set_postfix({'status': 'Begin Exporting Result Extents to geojson file'})
                 manifest_extents_file = project_folder / "manifest_extents.geojson"
-                result.dissolve(by="quadkey").to_file(manifest_extents_file, driver='GeoJSON')
+                result.dissolve(by="quadkey").drop(columns="file", axis=1).to_file(manifest_extents_file, driver='GeoJSON')
                 del result
                 te = time.time()
                 files.set_postfix({'status': f"Exported to GeoJSON in {te - ts} seconds"})
