@@ -402,8 +402,9 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             elif out_format in supported_geo_file_formats or out_format in supported_db_formats:
                 packs_keys = gdf['description'].unique()
                 gdf_dict = dict()
+                #gdf_columns = list(gdf.columns)
                 for _ in packs_keys:
-                    gdf_dict[_] = gdf.loc[gdf['description'] == _]
+                    gdf_dict[_] = gdf.loc[gdf['description'] == _].dropna(axis=1)
                 output = Path(output)
                 for key, subset_gdf in gdf_dict.items():
                     name = sub('[\W_]+', '', key).strip()
