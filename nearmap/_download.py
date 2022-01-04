@@ -4,8 +4,8 @@
 #   Author: Connor Tluck | Solutions Engineer | Nearmap
 #           Geoff Taylor | Sr Solutions Architect | Nearmap
 #   Date created: 7/10/2021
-#   Last update: 9/28/2021
-#   Python Version: 3.6+
+#   Last update: 1/3/2022
+#   Python Version: 3.8+
 ####################################
 
 try:
@@ -14,6 +14,7 @@ except ModuleNotFoundError:
     from json import dump, dumps
 
 from tqdm.auto import tqdm
+
 
 def process_payload(combined_dataframe, out_folder, out_format, save=True):
     """
@@ -462,7 +463,7 @@ def dsm_imagery_downloader(base_url, api_key, df_parcels, out_folder, since=None
             transactionToken = coverage["transactionToken"]
             most_recent_survey_id = coverage["surveys"][0]["id"]  # Gets most recent surveyID
             tif_save_path = out_folder + '/DSM_' + 'Grid_Number_' + str(row) + '.tif'
-            imageStaticMapV2(base_url, api_key, surveyID=most_recent_survey_id, image_type=resources, file_format='tif',
+            imageStaticMapV2(base_url, surveyID=most_recent_survey_id, image_type=resources, file_format='tif',
                              point=point, radius=radius, size="5000x5000",
                              transactionToken=transactionToken,
                              out_image=tif_save_path)
