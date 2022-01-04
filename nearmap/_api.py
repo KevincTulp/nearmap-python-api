@@ -302,7 +302,6 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                                supported_db_formats]]
 
     if out_format in all_supported_formats:
-        print(output)
         output = Path(output)
         assert output, f"Error: no 'output' directory or 'file' specified"
         f_split = splitext(output)
@@ -320,7 +319,6 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                 packs = [None]
 
         if is_file and out_format not in supported_db_formats:
-            print("a")
             assert len(packs) == 1 and None not in packs, f"Error: Cannot Download Multiple AI Packs into Single " \
                                                           f"{out_format} file. Output to Folder/Directory instead"
         if is_dir:
