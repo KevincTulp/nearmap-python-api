@@ -28,10 +28,7 @@ since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
 packs = None  # ex: "building" # Set to None for all packs otherwise type pack of interest name(s)
 
-##########
-# Script
-########
-
+# Uncommend out the operation below for the format you wish to return data as.
 
 '''
 # query available ai packs
@@ -50,25 +47,25 @@ print(df)
 '''
 # Get AI Features as JSON
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format="json", lat_lon_direction="yx")
-print(dumps(my_ai_features, indent=4, sort_keys=True))
-print(my_ai_features)
+#print(dumps(my_ai_features, indent=4, sort_keys=True))
+#print(my_ai_features)
 
 # Save AI features to JSON File
 with open('my_data.json', 'w', encoding='utf-8') as f:
     dump(my_ai_features, f, ensure_ascii=False, indent=4)
 '''
 
-
+'''
 # Get AI Features as geojson
 out_format = "geojson"
 output = r'test_folder'
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
-
+'''
 
 '''
 # Get AI Features as geopackage
 out_format = "gpkg"
-output = "test_file.gpkg"
+output = "test_gpkg"
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
 '''
 
@@ -80,7 +77,29 @@ my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, 
 '''
 
 '''
-# Get AI Features as geopandas
+# Get AI Features as pandas dataframe
+out_format = "pandas"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, lat_lon_direction="yx")
+print(my_ai_features.head())
+'''
+
+'''
+# Get AI Features as geopandas dataframe
 out_format = "geopandas"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, lat_lon_direction="yx")
+print(my_ai_features.head())
+'''
+
+'''
+# Get AI Features as Feather
+out_format = "feather"
+output = "test_feather.feather"
+my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
+'''
+
+''''
+# Get AI Features as Parquet
+out_format = "parquet"
+output = "test_parquet.parquet"
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
 '''

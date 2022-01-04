@@ -285,7 +285,8 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
         url += "&apikey={api_key}"
 
     supported_df_formats = ["pandas", "pd"]
-    supported_spreadsheet_formats = ["csv", "xlsx", "parquet"]
+    supported_spreadsheet_formats = ["csv", "xlsx"]
+    supported_columnar_formats = ["feather", "parquet"]
     supported_geo_file_formats = ["geojson", "shp"]
     supported_gdf_formats = ["geopandas", "gpd"]
     supported_db_formats = ["gpkg", "gdb"]
@@ -297,32 +298,38 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
     all_supported_formats = []
     [all_supported_formats.extend(_) for _ in [supported_df_formats,
                                                supported_spreadsheet_formats,
+                                               supported_columnar_formats,
                                                supported_gdf_formats,
                                                supported_geo_file_formats,
                                                supported_db_formats]]
 
     if out_format in all_supported_formats:
-        output = Path(output)
-        assert output, f"Error: no 'output' directory or 'file' specified"
-        f_split = splitext(output)
-        is_file = False
-        is_dir = False
-        if not f_split[1]:
-            is_dir = True
-        elif f_split[1]:
-            is_file = True
+        if output:
+            output = Path(output)
+            assert output, f"Error: no 'output' directory or 'file' specified"
+            f_split = splitext(output)
+            is_file = False
+            is_dir = False
+            if not f_split[1]:
+                is_dir = True
+            elif f_split[1]:
+                is_file = True
 
-        if type(packs).__name__ != 'list':
-            if type(packs).__name__ == "string":
-                packs = [packs]
-            else:
-                packs = [None]
+            if type(packs).__name__ != 'list':
+                if type(packs).__name__ == "string":
+                    packs = [packs]
+                else:
+                    packs = [None]
 
-        if is_file and out_format not in supported_db_formats:
-            assert len(packs) == 1 and None not in packs, f"Error: Cannot Download Multiple AI Packs into Single " \
-                                                          f"{out_format} file. Output to Folder/Directory instead"
-        if is_dir:
-            _create_folder(output)
+            single_file_formats = []
+            [single_file_formats.extend(_) for _ in [supported_db_formats, supported_columnar_formats]]
+            if is_file and out_format not in single_file_formats:
+                assert len(packs) == 1 and None not in packs, f"Error: Cannot Download Multiple AI Packs into Single " \
+                                                              f"{out_format} file. Output to Folder/Directory instead"
+            if is_dir:
+                assert out_format not in supported_columnar_formats, f"Error: 'output' for {out_format} must be file " \
+                                                                     f"with extension '.{out_format}'"
+                _create_folder(output)
 
         import geopandas as gpd
         import pandas as pd
@@ -374,7 +381,6 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                     else:
                                         temp_dict['numStorConfidence'] = None
             features_list.append(temp_dict)
-        #exit()
         if not features_list:
             print(f"Error: No Features Detected for AI Pack '{packs}'")
             return None
@@ -384,19 +390,23 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                 df = pd.DataFrame(gdf)
                 if out_format in ["pandas", "pd"]:
                     return df
-                elif out_format == "parquet":
-                    df.to_parquet(output)
-                elif out_format == "feather":
-                    df.to_feature(output)
                 elif out_format == "csv":
                     df.to_csv(output, index=False)
                 elif out_format == "xlsx":
                     df.to_excel(output)
                     #df.to_excel(output, engine='xlsxwriter')
             if out_format in supported_gdf_formats:
-                return gdf
+                return gdf.dropna(axis=1)
             elif out_format == "geojson" and output is None:
-                return gdf.to_json()
+                return gdf.dropna(axis=1).to_json()
+            elif out_format == "parquet":
+                import warnings;
+                warnings.filterwarnings('ignore', message='.*initial implementation of Parquet.*')
+                return gdf.dropna(axis=1).to_parquet(output)
+            elif out_format == "feather":
+                import warnings;
+                warnings.filterwarnings('ignore', message='.*initial implementation of Parquet.*')
+                return gdf.dropna(axis=1).to_feather(output)
             elif out_format in supported_geo_file_formats or out_format in supported_db_formats:
                 packs_keys = gdf['description'].unique()
                 gdf_dict = dict()
