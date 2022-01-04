@@ -329,12 +329,10 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
         import geopandas as gpd
         import pandas as pd
         from shapely import geometry
-        print(url)
         my_json = get(url).json().get('features')
         column_names = []
         for f in my_json:
             [column_names.append(i) for i in f.keys() if i not in column_names]
-
         features_list = list()
         for f in my_json:
             temp_dict = dict()
@@ -353,8 +351,10 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                         attrs = f.get('attributes')
                         if len(attrs) > 0:
                             for attr_k in attrs[0].keys():
-                                if attr_k not in ['components', 'numStories', 'height']:
+                                if attr_k not in ['components', 'numStories', 'height', 'description']:
                                     temp_dict[attr_k] = attrs[0].get(attr_k)
+                                if attr_k == 'description':
+                                    temp_dict['attr_desc'] = attrs[0].get(attr_k)
                                 if attr_k == 'components':
                                     components = attrs[0].get(attr_k)
                                     c_count = 0
@@ -376,6 +376,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                                     else:
                                         temp_dict['numStorConfidence'] = None
             features_list.append(temp_dict)
+        #exit()
         if not features_list:
             print(f"Error: No Features Detected for AI Pack '{packs}'")
             return None
