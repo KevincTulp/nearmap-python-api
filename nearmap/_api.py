@@ -4,8 +4,8 @@
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #            Connor Tluck | Solutions Engineer | Nearmap
 #   Date created: 7/7/2021
-#   Last update: 9/28/2021
-#   Python Version: 3.6+
+#   Last update: 1/03/2022
+#   Python Version: 3.8+
 ####################################
 
 from datetime import datetime, timezone, timedelta
@@ -13,11 +13,20 @@ from requests import get
 from io import BytesIO
 from time import sleep
 from pathlib import Path
+from os import mkdir
+from os.path import splitext
+from re import sub
 
 try:
     from ujson import loads, dumps
 except ModuleNotFoundError:
     from json import loads, dumps
+
+
+def _create_folder(folder):
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
 
 
 def _format_polygon(polygon, lat_lon_direction):
@@ -275,22 +284,48 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
     else:
         url += "&apikey={api_key}"
 
-    supported_export_formats = ["pandas", "pd", "geopandas", "gpd", "geojson", "shp", "gpkg", "csv", "xlsx", "parquet"]
-    supported_file_formats = ["geojson", "shp", "gpkg", "csv", "xlsx", "parquet"]
+    supported_df_formats = ["pandas", "pd"]
+    supported_spreadsheet_formats = ["csv", "xlsx", "parquet"]
+    supported_geo_file_formats = ["geojson", "shp"]
+    supported_gdf_formats = ["geopandas", "gpd"]
+    supported_db_formats = ["gpkg", "gdb"]
     if out_format == "json":
         if not return_url:
             return get(url).json()
         elif return_url:
             return "f'" + url + "'"
-    elif out_format in supported_export_formats:
-        if out_format in supported_file_formats:
-            if len(packs) > 1:
-                assert output, f"Error: no 'output' directory specified"
-                assert Path(output).is_dir(), f"Error: 'output' must be a directory if > 1 packs are requested"
-            elif len(packs) == 1:
-                assert output, f"Error: no 'output' file or directory specified"
-                assert Path(output).suffix in [".shp", ".geojson", ".gpkg"], \
-                    f"Error: format {Path(output).suffix} not supported"
+    all_supported_formats = []
+    [all_supported_formats.extend(_) for _ in [supported_df_formats,
+                                               supported_spreadsheet_formats,
+                                               supported_gdf_formats,
+                                               supported_geo_file_formats,
+                                               supported_db_formats]]
+
+    if out_format in all_supported_formats:
+        print(output)
+        output = Path(output)
+        assert output, f"Error: no 'output' directory or 'file' specified"
+        f_split = splitext(output)
+        is_file = False
+        is_dir = False
+        if not f_split[1]:
+            is_dir = True
+        elif f_split[1]:
+            is_file = True
+
+        if type(packs).__name__ != 'list':
+            if type(packs).__name__ == "string":
+                packs = [packs]
+            else:
+                packs = [None]
+
+        if is_file and out_format not in supported_db_formats:
+            print("a")
+            assert len(packs) == 1 and None not in packs, f"Error: Cannot Download Multiple AI Packs into Single " \
+                                                          f"{out_format} file. Output to Folder/Directory instead"
+        if is_dir:
+            _create_folder(output)
+
         import geopandas as gpd
         import pandas as pd
         from shapely import geometry
@@ -346,7 +381,7 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             return None
         else:
             gdf = gpd.GeoDataFrame(features_list, geometry='geometry', crs='EPSG:4326')
-            if out_format in ["pandas", "pd", "csv", "xlsx", "parquet", "feather"]:
+            if out_format in supported_df_formats or out_format in supported_spreadsheet_formats:
                 df = pd.DataFrame(gdf)
                 if out_format in ["pandas", "pd"]:
                     return df
@@ -359,22 +394,31 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
                 elif out_format == "xlsx":
                     df.to_excel(output)
                     #df.to_excel(output, engine='xlsxwriter')
-            if out_format in ["geopandas", "gpd"]:
+            if out_format in supported_gdf_formats:
                 return gdf
             elif out_format == "geojson" and output is None:
                 return gdf.to_json()
-            elif out_format in supported_file_formats:
-                # TODO: Keep editing below.... resolve output... ensure format and extension line up and/or deal with folder also
-                # TODO: Iterate through geodataframe, split by feature type and output separate layers
-                if out_format == "geojson":
-                    gdf.to_file(output, driver='GeoJSON')
-                    return output
-                if out_format == "shp":
-                    gdf.to_file(output)
-                    return output
-                elif out_format == "gpkg":
-                    gdf.to_file(output, layers="ai_data", driver="GPKG")
-                    return output
+            elif out_format in supported_geo_file_formats or out_format in supported_db_formats:
+                packs_keys = gdf['description'].unique()
+                gdf_dict = dict()
+                for _ in packs_keys:
+                    gdf_dict[_] = gdf.loc[gdf['description'] == _]
+                output = Path(output)
+                for key, subset_gdf in gdf_dict.items():
+                    name = sub('[\W_]+', '', key).strip()
+                    f = output
+                    if is_dir:
+                        if out_format in supported_geo_file_formats:
+                            f = (output / f"{name}.{out_format}").as_posix()
+                        elif out_format in supported_db_formats:
+                            f = output / f"nearmap.{out_format}"
+                    if out_format == "geojson":
+                        subset_gdf.to_file(f, driver='GeoJSON')
+                    if out_format == "shp":
+                        subset_gdf.to_file(f)
+                    elif out_format == "gpkg":
+                        subset_gdf.to_file(f, driver="GPKG", layer=name)
+                return output
     else:
         print(f"Error: output out_format {out_format} is not supported.")
         exit()

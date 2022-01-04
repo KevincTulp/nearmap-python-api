@@ -26,7 +26,7 @@ polygon = [-87.73101994900836, 41.79082699478777,
 
 since = None  # Since Data ex: "2018-08-01"
 until = None  # Until Date ex: "2021-07-09"
-packs = "building" #None  # "building" # Set to None for all packs otherwise type pack of interest name(s)
+packs = None  # ex: "building" # Set to None for all packs otherwise type pack of interest name(s)
 
 ##########
 # Script
@@ -46,6 +46,7 @@ print(dumps(my_classes, indent=4, sort_keys=True))
 df = nearmap.aiFeaturesV4(polygon, since=None, until=None, packs=None, out_format="pandas", lat_lon_direction="yx")
 print(df)
 '''
+
 '''
 # Get AI Features as JSON
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format="json", lat_lon_direction="yx")
@@ -60,19 +61,25 @@ with open('my_data.json', 'w', encoding='utf-8') as f:
 
 # Get AI Features as geojson
 out_format = "geojson"
-output = r'test_file.geojson'
+output = r'test_folder'
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
+
+
 '''
 # Get AI Features as geopackage
 out_format = "gpkg"
 output = "test_file.gpkg"
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
+'''
 
+'''
 # Get AI Features as shapefile
 out_format = "shp"
-output = "test_file.shp"
+output = r"test_file"
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
+'''
 
+'''
 # Get AI Features as geopandas
 out_format = "geopandas"
 my_ai_features = nearmap.aiFeaturesV4(polygon, since, until, packs, out_format, output, lat_lon_direction="yx")
