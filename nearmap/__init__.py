@@ -4,7 +4,7 @@
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #            Connor Tluck | Solutions Engineer | Nearmap
 #   Date created: 7/7/2021
-#   Last update: 12/23/2021
+#   Last update: 1/03/2022
 #   Python Version: 3.8+
 ####################################
 
@@ -379,10 +379,33 @@ class NEARMAP(object):
         ---------------     --------------------------------------------------------------------
         out_format          Optional string.    Output format for returning AI Features. If not specified JSON will be
                             returned by default.
-                            The available values are:
+                            The available output dataset are:
                                 "json" - returns a json object (This is the default)
                                 "text" - returns a text object
                                 "pandas" - returns a pandas dataframe object
+                                "geopandas" - returns a geopandas geodataframe object
+                                "geojson" -returns a geojson object
+                            The available output file type values are:
+                                "csv" - returns a csv file of the pandas dataframe
+                                "xlsx" - returns a excel spreadsheet file of the pandas dataframe
+                                "parquet" - returns a parquet file of the geodataframe
+                                "feather": - returns a feather file of the geodataframe
+                                "shp": - returns a shapefile
+                                "gpkg": - returns a geopackage
+                                "geojson": - returns as geojson file
+        ---------------     --------------------------------------------------------------------
+        output              Optional string.    Output file of folder for writing out_format data to. Some formats must
+                            be output to a folder. Others can be output directly to a file.
+                            The following support writing all ai pack data merged directly to a single file:
+                                ".csv" -  comma seperated value file | ex: "my_file.csv"
+                                ".xlsx" - excel spreadsheet file | ex: "my_file.xlsx"
+                                ".parquet" - apache parquet columnar file format| ex: "my_file.parquet"
+                                ".feather": - apache feature binary file format | ex: "my_file.feather"
+                            The following support writing a single ai pack to a file or folder for multiple ai packs.
+                                ".shp": - esri shapefile file format | ex: "my_file.shp" or "my_dir"
+                                ".geojson": - returns as geojson file | ex: "my_file.gpkx" or "my_dir"
+                            The following support writing a single ai pack or multiple ai packs to a file or Folder.
+                                ".gpkx": - geopackge file | ex: "my_file.gpkx" or "my_dir"
         ---------------     --------------------------------------------------------------------
         lat_lon_direction   Optional string.  Reverses the ordering of the default point input parameter from lon/lat
                             to lat/lon coords to support US and other nations using this ordering.
@@ -391,9 +414,10 @@ class NEARMAP(object):
         surveyResourceID    placeholder for later use.... of no current usage value
         ===============     ====================================================================
 
-        :return: json, text, or pandas dataframe object
-
+        :return: json, text, pandas, geopandas, geojson, folder, csv file, xlsx file, parquet file, feather file,
+        shapefile, geopackage, geojson file
         """
+
         return _api.aiFeaturesV4(self.base_url, self.api_key, polygon, since, until, packs, out_format, output,
                                  lat_lon_direction, surveyResourceID, return_url)
 
