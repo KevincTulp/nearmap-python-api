@@ -1,5 +1,5 @@
 ####################################
-#   File name: Join_AI_To_Parcel_Dataset.py
+#   File name: detect_parcels_containing_ai_data.py
 #   About: Process for detecting parcels that contain AI data. Requires parcel dataset to query
 #   Authors: Geoff Taylor | Sr Solution Architect | Nearmap
 #   Date created: 1/07/2022
@@ -88,7 +88,7 @@ def write_gdf_to_file(gdf=None, output_file=None):
         exit()
 
 
-def create_image_download_manifest(input_ai_dataset, input_parcel_dataset, output_file, input_processing_bounds=None):
+def detect_parcels_containing_ai_data(input_ai_dataset, input_parcel_dataset, output_file, input_processing_bounds=None):
     mask = None
     if input_processing_bounds:
         mask = read_file_as_gdf(input_processing_bounds, to_crs='EPSG:4326')
@@ -133,4 +133,4 @@ if __name__ == "__main__":
     ##########
     # Script
     ########
-    create_image_download_manifest(input_ai_dataset, input_parcel_dataset, output_file, input_processing_bounds)
+    detect_parcels_containing_ai_data(input_ai_dataset, input_parcel_dataset, output_file, input_processing_bounds)
