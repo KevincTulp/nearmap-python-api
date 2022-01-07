@@ -14,14 +14,16 @@ from os.path import split, splitext
 
 
 def get_file_crs(in_file):
-    with fiona.open(in_file, "r") as source:
+    with fiona.open(in_file, mode="r") as source:
         crs = source.crs.get('init').upper()
+        print(crs)
         return crs
 
 
 def get_db_layer_crs(in_db, layer):
-    with fiona.open(in_db, layer=layer.replace("main.", "")) as source:
+    with fiona.open(in_db, layer=layer.replace("main.", ""), mode="r") as source:
         crs = source.crs.get('init').upper()
+        print(crs)
         return crs
 
 
@@ -92,11 +94,12 @@ def detect_parcels_containing_ai_data(input_ai_dataset, input_parcel_dataset, ou
     mask = None
     if input_processing_bounds:
         mask = read_file_as_gdf(input_processing_bounds, to_crs='EPSG:4326')
-        if len(mask.index) > 1:
-            dissolve_col_name = 'dissolve_column'
-            mask[dissolve_col_name] = 0
-            mask = mask.dissolve(by=dissolve_col_name)
-        print(f"Detected {len(mask.index)} Features in Mask dataset")
+        if mask is not None:
+            if len(mask.index) > 1:
+                dissolve_col_name = 'dissolve_column'
+                mask[dissolve_col_name] = 0
+                mask = mask.dissolve(by=dissolve_col_name)
+            print(f"Detected {len(mask.index)} Features in Mask dataset")
     if mask is not None:
         ai_dataset = read_file_as_gdf(input_ai_dataset, to_crs='EPSG:4326')
         print(f"Detected {len(ai_dataset.index)} Features in source AI dataset")
