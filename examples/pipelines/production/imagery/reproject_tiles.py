@@ -351,16 +351,13 @@ def reprojection(input_dir, output_dir, tile_manifest=None, mask_geometry=None, 
                     if result is not None:
                         processed_tiles.append(result)
                     progress.update()
-    print(processed_tiles)
-    #print(len(processed_tiles))
-    #print(processed_tiles)
     # Cleaup After Processing
     rmtree(scratch_dir, ignore_errors=True)
     del my_vrt
     Path(vrt_file).unlink()
 
-    ts = time.time()
     if len(processed_tiles) >= 1:
+        ts = time.time()
         print({'status': 'Begin Loading Manifest to GeoDataFrame'})
         # print(f'Begin Loading Manifest to GeoDataFrame')
         result = gpd.GeoDataFrame(processed_tiles).set_crs(output_crs)
@@ -376,8 +373,8 @@ def reprojection(input_dir, output_dir, tile_manifest=None, mask_geometry=None, 
     end_time = time.perf_counter()
     total_time = end_time-start_time
     total_min = total_time/60
-    print(f'processing time is: {total_time}')
-    print(f'processing time in minutes is: {total_min}')
+    print(f"'status': processing time is: {total_time}")
+    print(f"'status': processing time in minutes is: {total_min}")
 
 
 if __name__ == "__main__":
