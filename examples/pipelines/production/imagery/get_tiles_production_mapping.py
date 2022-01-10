@@ -412,18 +412,19 @@ def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_d
         scheme = tiletanic.tileschemes.WebMercator()
         in_geojson = Path(in_geojson)
         with fiona.open(in_geojson) as src:
+            src_crs = src.crs.get('init').upper()
             for rec in src:
-                # Convert to web mercator, load as shapely geom.
-                wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                if src_crs != 'EPSG:3857':
+                    wm_geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                else:
+                    wm_geom = shape(rec.get('geometry'))
                 if buffer_distance or buffer_distance != 0:
                     wm_geom = wm_geom.buffer(buffer_distance, cap_style=3, join_style=2)
                 if remove_holes:
                     wm_geom = Polygon(wm_geom.exterior)
                 geoms.append(wm_geom)
-                #exit()
         if processing_method in ["mask", "bounds"]:
             geom_mask = ops.unary_union(geoms)
-
         # Find the covering.
         tiles = []
         for geom in geoms:
@@ -535,7 +536,7 @@ if __name__ == "__main__":
     Example: "FL_1245025_MiamiBeach_Source.geojson"
     '''
 
-    input_dir = r'/examples/pipelines/production/test_data'
+    input_dir = r'../test_data'
     output_dir = r'C:\output_tiles'
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by

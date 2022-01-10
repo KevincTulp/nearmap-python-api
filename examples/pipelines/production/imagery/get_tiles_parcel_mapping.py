@@ -476,6 +476,7 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
     count = 0
     features = list()
     with fiona.open(input_geojson) as src:
+        src_crs = src.crs.get('init').upper()
         l = list()
         num_records = len(list(src))
         for rec in tqdm(src, desc="Preparing Records for Processing..."):
@@ -488,7 +489,11 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
                 pass
             else:
                 l.append(v)
-                geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                geom = None
+                if src_crs != 'EPSG:3857':
+                    geom = shape(transform_geom('EPSG:4326', 'EPSG:3857', rec.get('geometry')))
+                else:
+                    geom = shape(rec.get('geometry'))
                 if buffer_distance:
                     geom = geom.buffer(buffer_distance, cap_style=3, join_style=2)
                 geom_type = geom.geom_type
@@ -547,7 +552,6 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
         print({'status': f'Processing {len(l)} of {num_records} Records | Skipping {num_records-len(l)} '
                          f'"{fid}" duplicates'})
         del l
-
     te = time.time()
     ts = time.time()
     r_tiles = []
@@ -632,18 +636,19 @@ if __name__ == "__main__":
     api_key = get_api_key()  # Edit api key in nearmap/api_key.py -or- type api key as string here
     nearmap = NEARMAP(api_key)
 
-    input_geojson = r'../../../nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcels.geojson'
-    fid = 'HCAD_NUM'  # Unique Feature ID for downloading/processing
+    input_geojson = r'../test_data/parcels_with_pools.geojson'  #r'../../../nearmap/unit_tests/TestData/Parcels_Vector/JSON/Parcels.geojson'
+    fid = "property_id"
+    #fid = 'HCAD_NUM'  # Unique Feature ID for downloading/processing
     skip_duplicate_fid = True
-    output_dir = r'C:/output_test'
+    output_dir = r'C:/pools_unclipped'
     zoom = 21  # Nearmap imagery zoom level
     download_method = 'bounds'  # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 0  # Buffer Distance in Meters
     remove_holes = True  # Remove holes within polygons
     out_image_format = 'jpg'  # supported: 'jpg', 'tif', 'png'
     compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
-    jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
-    processing_method = 'mask'  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
+    jpeg_quality = 100  # Only used if using JPEG Compression range[1-100]..
+    processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon
     out_manifest = True  # Output a manifest of data extracted
 
     ###############################
