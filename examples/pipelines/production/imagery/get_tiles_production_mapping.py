@@ -380,29 +380,38 @@ def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_im
         return None
 
 
-def tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
+def tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
                     compression=None, jpeg_quality=75, group_zoom_level=13, processing_method=None, surveyid=None,
                     tileResourceType='Vert', tertiary=None, since=None, until=None, mosaic=None, include=None,
                     exclude=None, rate_limit_mode="slow", max_cores=None, max_threads=None):
 
-    input_dir = Path(input_dir).resolve()
+    input = Path(input).resolve()
     output_dir = Path(output_dir).resolve()
 
-    assert input_dir.is_dir(), f"Error: 'input_dir' {input_dir}is not a folder/directory"
+    assert input.is_dir() or input.is_file(), \
+        f"Error: 'input_dir' {input} is not a folder/directory or File"
     assert not output_dir.is_file(), f"Error: 'output_dir' {output_dir} cannot be a file... must be a folder/directory"
 
     supported_formats = ['.geojson']
-    files = tqdm([f for f in list(Path(input_dir).iterdir()) if f.suffix in supported_formats])
+    files = None
+    if input.is_dir():
+        files = tqdm([f for f in list(Path(input).iterdir()) if f.suffix in supported_formats])
+    elif input.is_file():
+        files = tqdm([input])
+    else:
+        print(f"Error: 'input' File not supported or reading error... |  {input}")
     in_geojson = None
     for file in files:
         geom_mask = None
         if file.suffix == ".geojson":
             in_geojson = file
         files.set_description(f"Processing {file.name}")
-        name_string = Path(in_geojson).stem.replace("_Source", "")
-        state_abbrev = name_string.split("_")[0]
-        place_name = f'{name_string.split("_")[1]}_{name_string.split("_")[2]}'
-        project_folder = output_dir / state_abbrev / place_name
+        name_string = Path(in_geojson).stem
+        proj_folder_str = ""
+        for _ in name_string.split("_")[:-1]:
+            proj_folder_str = proj_folder_str + f"{_}/"
+        proj_folder_str = proj_folder_str + name_string.split("_")[-1]
+        project_folder = Path(output_dir / proj_folder_str)
         _create_folder(project_folder)
         tiles_folder = project_folder / 'tiles'
         files.set_postfix({'status': 'Generating Tile Grid'})
@@ -536,7 +545,9 @@ if __name__ == "__main__":
     Example: "FL_1245025_MiamiBeach_Source.geojson"
     '''
 
-    input_dir = r'../test_data'
+    input = r'../test_data'  # Input Directory or File (geojson).
+                             # Use underscores in filename to designate output directory structure
+                             # ex: my_file_name.geojson converts to: output_dir/my/file/name'
     output_dir = r'C:\output_tiles'
     zoom = 21
     buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
@@ -562,6 +573,6 @@ if __name__ == "__main__":
     exclude = None
     rate_limit_mode = 'slow'
 
-    tile_downloader(nearmap, input_dir, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
+    tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_distance, remove_holes, out_image_format,
                     compression, jpeg_quality, group_zoom_level, processing_method, surveyid, tileResourceType, tertiary, since,
                     until, mosaic, include, exclude, rate_limit_mode)
