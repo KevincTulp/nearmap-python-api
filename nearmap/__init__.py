@@ -394,7 +394,7 @@ class NEARMAP(object):
                                 "gpkg": - returns a geopackage
                                 "geojson": - returns as geojson file
         ---------------     --------------------------------------------------------------------
-        output              Optional string.    Output file of folder for writing out_format data to. Some formats must
+        output              Optional string.    Output file of folder for writing  data to. Some formats must
                             be output to a folder. Others can be output directly to a file.
                             The following support writing all ai pack data merged directly to a single file:
                                 ".csv" -  comma seperated value file | ex: "my_file.csv"

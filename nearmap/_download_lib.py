@@ -4,8 +4,8 @@
 #   Author: Connor Tluck | Solutions Engineer | Nearmap
 #           Geoff Taylor | Sr Solutions Architect | Nearmap
 #   Date created: 7/10/2021
-#   Last update: 9/28/2021
-#   Python Version: 3.6+
+#   Last update: 1/3/2022
+#   Python Version: 3.8+
 ####################################
 
 from zipfile import ZipFile

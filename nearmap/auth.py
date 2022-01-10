@@ -3,7 +3,7 @@
 #   About: simple authentication using credentials in auxillary api_key.json file
 #   Author: Geoff Taylor | Sr Solution Architect | Nearmap
 #   Date created: 7/7/2021
-#   Python Version: 3.8
+#   Python Version: 3.8+
 ####################################
 
 try:
