@@ -8,6 +8,7 @@ from tqdm import tqdm
 from shapely.geometry import mapping, Polygon
 import fiona
 from osgeo import gdal
+from osgeo.gdalconst import GA_ReadOnly
 import time
 import warnings
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -17,6 +18,33 @@ def _create_folder(folder):
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     return folder
+
+
+def get_raster_geom(in_raster, method=None, as_str=False):
+    data = gdal.Open(in_raster, GA_ReadOnly)
+    geo_transform = data.GetGeoTransform()
+    xmin = geo_transform[0]
+    ymax = geo_transform[3]
+    xmax = xmin + geo_transform[1] * data.RasterXSize
+    ymin = ymax + geo_transform[5] * data.RasterYSize
+    ret_val = None
+    if method in [None, "extent"]:
+        if as_str:
+            ret_val = f"{xmin} {ymin} {xmax} {ymax}"
+        else:
+            ret_val = [xmin, ymin, xmax, ymax]
+    if method == "bounds":
+        if as_str:
+            f"{xmin} {ymin} {xmin} {ymax} {xmax} {ymax} {xmax} {ymin}"
+        else:
+            ret_val = [[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
+    if method == "polygon":
+        if as_str:
+            f"{xmin} {ymin} {xmin} {ymax} {xmax} {ymax} {xmax} {ymin} {xmin} {ymin}"
+        else:
+            ret_val = Polygon([[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin], [xmin, ymin]])
+    data = None
+    return ret_val
 
 
 def shapely_polygon_to_shp(in_shapely_geom, crs, out_shapefile):
@@ -119,7 +147,7 @@ def delete_shapefile(in_shapefile):
 
 
 def reproject_image(input_vrt, scratch_dir, output_image, output_image_format, output_crs, mask_geometry,
-                    bounds_geometry=None, resample_alg='bilinear'):
+                    bounds_geometry=None, resample_alg='bilinear', fid=None):
     scratch_dir = Path(scratch_dir)
     output_image = Path(output_image).as_posix()
     input_vrt = Path(input_vrt).as_posix()
@@ -175,7 +203,9 @@ def reproject_image(input_vrt, scratch_dir, output_image, output_image_format, o
     '''
     # TODO Return Geometry of output Tile, Tile ID, and Tile Name to merge in the results manifest geojson
     temp = dict()
-    temp['tile'] = output_image
+    temp['id'] = fid
+    temp['tile'] = Path(output_image).name
+    temp['geometry'] = get_raster_geom(output_image, method="polygon", as_str=False)
     return temp
 
 
@@ -277,7 +307,8 @@ def reprojection(input_dir, output_dir, tile_manifest=None, mask_geometry=None, 
                         output_image=output_image,
                         output_image_format=input_image_format,
                         output_crs=output_crs,
-                        mask_geometry=mask_geometry_gdf)
+                        mask_geometry=mask_geometry_gdf,
+                        fid=0)
 
     elif tile_manifest:
 
@@ -313,12 +344,14 @@ def reprojection(input_dir, output_dir, tile_manifest=None, mask_geometry=None, 
                                                 output_image_format=input_image_format,
                                                 output_crs=output_crs,
                                                 bounds_geometry=geometry,
-                                                mask_geometry=mask_geometry_gdf))
+                                                mask_geometry=mask_geometry_gdf,
+                                                fid=index))
                 for job in jobs:
                     result = job.result()
-                    #if result is not None:
-                    #    processed_tiles.extend(result)
+                    if result is not None:
+                        processed_tiles.append(result)
                     progress.update()
+    print(processed_tiles)
     #print(len(processed_tiles))
     #print(processed_tiles)
     # Cleaup After Processing
@@ -326,9 +359,20 @@ def reprojection(input_dir, output_dir, tile_manifest=None, mask_geometry=None, 
     del my_vrt
     Path(vrt_file).unlink()
 
-    # TODO Create VRT File of resulting data
-    # TODO: Create GeoJSON Manifest of resulting data
-
+    ts = time.time()
+    if len(processed_tiles) >= 1:
+        print({'status': 'Begin Loading Manifest to GeoDataFrame'})
+        # print(f'Begin Loading Manifest to GeoDataFrame')
+        result = gpd.GeoDataFrame(processed_tiles).set_crs(output_crs)
+        del processed_tiles
+        te = time.time()
+        print({'status': f'Loaded Manifest as GeoDataFrame in {te - ts} seconds'})
+        print({'status': 'Begin Exporting Results to geojson file'})
+        ts = time.time()
+        manifest_file = output_dir / "manifest.geojson"
+        result.to_file(manifest_file, driver='GeoJSON')
+        te = time.time()
+        print({'status': f"Exported to GeoJSON in {te - ts} seconds"})
     end_time = time.perf_counter()
     total_time = end_time-start_time
     total_min = total_time/60
