@@ -20,11 +20,10 @@ print(f"My API Key Is: {nearmap.api_key}")
 # Script
 ########
 
-coverage = nearmap.coverageV2()["features"]
+coverage = nearmap.coverageV2() # ["features"]
 print(dumps(coverage, indent=4, sort_keys=True))
 
 
 # Save AI features to JSON File
-with open('coverage_data.json', 'w', encoding='utf-8') as f:
+with open('coverage_data.geojson', 'w', encoding='utf-8') as f:
     dump(coverage, f, ensure_ascii=False, indent=4)
-

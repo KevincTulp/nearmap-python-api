@@ -38,3 +38,7 @@ lat_lon_direction = "yx"
 survey_coverage = nearmap.surveyV2(polygon, fileFormat, since, until, limit, offset, resources, overlap, include,
                                    exclude, lat_lon_direction)
 print(dumps(survey_coverage, indent=4, sort_keys=True))
+
+# Save AI features to JSON File
+with open('survey_coverage.geojson', 'w', encoding='utf-8') as f:
+    dump(survey_coverage, f, ensure_ascii=False, indent=4)
