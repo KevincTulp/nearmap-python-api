@@ -5,6 +5,7 @@ from zipfile import ZipFile
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from pathlib import Path
+from os.path import splitext
 
 
 #################
