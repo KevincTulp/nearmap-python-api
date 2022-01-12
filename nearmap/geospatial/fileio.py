@@ -6,6 +6,7 @@ from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from pathlib import Path
 from os.path import splitext
+from math import radians, asinh, tan, pi
 
 
 #################
@@ -24,6 +25,13 @@ def get_db_layer_crs(in_db, layer):
         crs = source.crs.get('init').upper()
         return crs
 
+def lat_lon_to_slippy_coords(lat_deg, lon_deg, zoom):
+    # From: https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+    lat_rad = radians(lat_deg)
+    n = 2.0 ** zoom
+    xtile = int((lon_deg + 180.0) / 360.0 * n)
+    ytile = int((1.0 - asinh(tan(lat_rad)) / pi) / 2.0 * n)
+    return [xtile, ytile]
 
 ################
 # File Reading
