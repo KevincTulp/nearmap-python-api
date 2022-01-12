@@ -4,6 +4,8 @@ from shapely.geometry import mapping, Polygon
 from zipfile import ZipFile
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
+from pathlib import Path
+
 
 #################
 # Obtain CRS/SRS
