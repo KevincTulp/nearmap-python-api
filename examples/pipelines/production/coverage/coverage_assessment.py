@@ -62,7 +62,7 @@ def main(api_key, input_file, output_folder, out_file_extension="geojson"):
                 intersect_geom = file_gdf.intersection(coverage_gdf_subset)
             intersect_geom = intersect_geom[~intersect_geom.is_empty]
             result_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries(intersect_geom))
-            result_gdf['area_sq_meter'] = result_gdf.area
+            result_gdf['area_sq_mi'] = result_gdf.area / 1000000
             result_gdf['area_sq_km'] = result_gdf.area / 10**6
             output_file = out_folder / f"coverage_{data_type}.{out_file_extension}"
             write_gdf_to_file(result_gdf.to_crs(4326), output_file)
