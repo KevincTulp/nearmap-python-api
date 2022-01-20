@@ -10,11 +10,11 @@ or
 - ["Standard + Advanced Analytics Libraries + Nearmap-Python-API"](./install/advanced_analytics/README.md) 
 
 2.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
+- Note: For Production Mapping please refer to the "Pipelines/Production" and "Downloads" Examples.
 
-_** The current release of the Nearmap API for Python mainly supports synchronous API calls/operations. 
-Asynchronous API calls and more advanced data download operations are continuously being added**_
+_** The Library is constantly being updated**_
 
-Example Usage:
+Example Usage for API Calls:
 
 Connect to the Nearmap API for Python
 ```python
