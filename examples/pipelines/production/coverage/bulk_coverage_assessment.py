@@ -13,7 +13,12 @@ def bulk_detect_coverage(api_key, input_dir, output_dir):
         for file in files:
             output_folder = Path(output_dir) / file.parents[0].as_posix().strip(f'{input_dir.as_posix()}')
             extension = file.suffix.strip('.')
-            detect_coverage(api_key, file, output_folder, out_file_extension="geojson")
+            try:
+                detect_coverage(api_key, file, output_folder, out_file_extension="geojson")
+            except ValueError as e:
+                print(f"Error: processing {file} | {e}")
+            except Exception as e:
+                print(f"Error: processing {file} | {e}")
             bulk_progress.update()
 
 
