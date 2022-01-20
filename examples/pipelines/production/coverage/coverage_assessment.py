@@ -22,7 +22,7 @@ def gdf_mask(in_gdf, crs='epsg:4326'):
     return out_gdf.set_crs(crs=crs)
 
 
-def main(api_key, input_file, output_folder, out_file_extension="geojson"):
+def detect_coverage(api_key, input_file, output_folder, out_file_extension="geojson"):
 
     read_file_gdf = read_file_as_gdf(input_file)
     file_gdf = read_file_gdf.to_crs(3857)
@@ -64,7 +64,8 @@ def main(api_key, input_file, output_folder, out_file_extension="geojson"):
             result_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries(intersect_geom))
             result_gdf['area_sq_mi'] = result_gdf.area * 0.00000038610215855
             result_gdf['area_sq_km'] = result_gdf.area / 10**6
-            output_file = out_folder / f"coverage_{data_type}.{out_file_extension}"
+
+            output_file = out_folder / f"{Path(input_file).stem}_coverage_{data_type}.{out_file_extension}"
             write_gdf_to_file(result_gdf.to_crs(4326), output_file)
             rmtree(scratch_folder, ignore_errors=True)
             del coverage_gdf_subset, intersect_geom, result_gdf
@@ -77,4 +78,4 @@ if __name__ == "__main__":
     output_folder = r''
     out_file_extension = "geojson"  # Options: "shp", "geojson", "gpkg"
     api_key = os.environ.get("NEARMAP_API_KEY")
-    main(api_key, input_file, output_folder, out_file_extension)
+    detect_coverage(api_key, input_file, output_folder, out_file_extension)
