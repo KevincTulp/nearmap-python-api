@@ -75,6 +75,6 @@ def main(api_key, input_file, output_folder, out_file_extension="geojson"):
 if __name__ == "__main__":
     input_file = r''
     output_folder = r''
-    out_file_extension = "geojson"  # Options: "shp", "geojson", "geopackage/layer"
+    out_file_extension = "geojson"  # Options: "shp", "geojson", "gpkg"
     api_key = os.environ.get("NEARMAP_API_KEY")
     main(api_key, input_file, output_folder, out_file_extension)
