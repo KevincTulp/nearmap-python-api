@@ -65,7 +65,7 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow", quiet=False):
                     data = get(url, allow_redirects=True)
                     return data
                     # return get(url, allow_redirects=True)
-                except (ConnectionError, ConnectionResetError, ConnectionAbortedError) as e:
+                except(ConnectionError, ConnectionResetError, ConnectionAbortedError, OSError) as e:
                     backoff_time = iter * 0.03
                     if backoff_time >= 1800:
                         sleep(backoff_time)

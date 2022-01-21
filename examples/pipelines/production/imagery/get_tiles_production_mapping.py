@@ -483,18 +483,18 @@ def tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_dista
 
         with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
             with tqdm(total=len(zip_d)) as progress:
-                jobs = []
-                for quadkey in zip_d:
-                    jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, quadkey, zip_d,
-                                                out_image_format, compression, jpeg_quality, processing_method,
-                                                out_manifest, num_threads, surveyid, tileResourceType, tertiary, since,
-                                                until, mosaic, include, exclude, rate_limit_mode, geom=geom_mask))
-                # results = []
-                for job in jobs:
-                    result = job.result()
-                    if result is not None:
-                        r_tiles.extend(result)
-                    progress.update()
+                    jobs = []
+                    for quadkey in zip_d:
+                        jobs.append(executor.submit(_process_tiles, nearmap, project_folder, tiles_folder, quadkey, zip_d,
+                                                    out_image_format, compression, jpeg_quality, processing_method,
+                                                    out_manifest, num_threads, surveyid, tileResourceType, tertiary, since,
+                                                    until, mosaic, include, exclude, rate_limit_mode, geom=geom_mask))
+                    # results = []
+                    for job in jobs:
+                        result = job.result()
+                        if result is not None:
+                            r_tiles.extend(result)
+                        progress.update()
         te = time.time()
         if len(r_tiles) > 0:
             files.set_postfix({'status': f'Downloaded and Zipped Tiles in {te - ts} seconds'})
@@ -550,13 +550,13 @@ if __name__ == "__main__":
                              # ex: my_file_name.geojson converts to: output_dir/my/file/name'
     output_dir = r'C:\output_tiles'
     zoom = 21
-    buffer_distance = 0  # 0.5, 1, 5, 10 .... Distance in meters to offset by
+    buffer_distance = 0  # Options: 0.5, 1, 5, 10, etc... Distance in meters to offset by
     remove_holes = True
-    out_image_format = 'tif'  # 'zip', 'tif', 'jpg
-    compression = 'JPEG'  # [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
-    jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]..
-    group_zoom_level = 13
-    processing_method = None  # "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon but takes much longer to process
+    out_image_format = 'tif'  # Options: 'tif', 'jpg' or 'zip'
+    compression = 'JPEG'  # Options: [JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/JXL/NONE]
+    jpeg_quality = 75  # Only used if using JPEG Compression range[1-100]
+    group_zoom_level = 14
+    processing_method = "mask"  # Options: "mask" "bounds" or None <-- Enables Masking or clipping of image to input polygon but takes much longer to process
     out_manifest = True  # Output a manifest of data extracted
 
     ###############################
