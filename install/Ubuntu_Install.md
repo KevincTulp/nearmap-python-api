@@ -6,6 +6,10 @@
 
 <h2>Installing Nearmap-Python-API</h2>
 
+<i>As the Nearmap-Python-API is currently in BETA it is installed in Development Mode. We will be releasing 
+"Conda-Forge" and "PIP Install" deployments in the future. The following installation methodology ensures 
+compatibility across operating systems and cpu architectures.</i>
+
 1.) Update Ubuntu
 - ```sudo apt update && sudo apt upgrade```
 

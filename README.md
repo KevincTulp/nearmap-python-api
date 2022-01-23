@@ -9,6 +9,11 @@ Initial Instructions:
 or 
 - ["Standard + Advanced Analytics Libraries + Nearmap-Python-API"](./install/advanced_analytics/README.md) 
 
+Please refer to the installation instructions above. DO NOT install via PIP.
+- <i>As the Nearmap-Python-API is currently in BETA it is installed in Development Mode. We will be releasing 
+"Conda-Forge" and "PIP Install" deployments in the future. The following installation methodology ensures 
+compatibility across operating systems and cpu architectures.</i>
+
 2.) Access example implementation scripts for all API operations in the ["examples folder"](./examples)
 - Note: For Production Mapping please refer to the "Pipelines/Production" and "Downloads" Examples.
 

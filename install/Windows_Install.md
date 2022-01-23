@@ -5,6 +5,10 @@
 
 <h2>Installing Nearmap-Python-API</h2>
 
+<i>As the Nearmap-Python-API is currently in BETA it is installed in Development Mode. We will be releasing 
+"Conda-Forge" and "PIP Install" deployments in the future. The following installation methodology ensures 
+compatibility across operating systems and cpu architectures.</i>
+
 1.) Ensure you have ***ONE*** of the following Python Package Managers Installed:
 - Conda (Data Science Toolkit): https://www.anaconda.com/products/individual
 - Miniconda (Minimal Installer for Conda): https://docs.conda.io/en/latest/miniconda.html
@@ -15,11 +19,11 @@
     
 - **Note: Unlike Linux & macOS, Windows Conda should not be called from the default windows command prompt**
 
-3.) Download or GIT the nearmap-python-api from github
+3.) [Download](https://github.com/nearmap/nearmap-python-api/archive/refs/heads/master.zip) or [GIT](https://git-scm.com/) the nearmap-python-api from github
 
 **For Nearmap-Py3-Standard Library Installer:**
 
-- 4.) Map to the install directory: ```cd nearmap-python-api/install directory```
+- 4.) Map to the install directory: ```cd nearmap-python-api/install```
 
 - 5.) Run: ```make env```
 
