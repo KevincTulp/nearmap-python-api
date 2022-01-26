@@ -250,7 +250,6 @@ def georeference_tiles(in_tiles, output_dir, scratch_dir, out_image_format, comp
 
 
 def shapely_polygon_to_shp(in_shapely_geom, crs, out_shapefile):
-
     # Define a polygon feature geometry with one attribute
     schema = {
         'geometry': 'Polygon',
@@ -575,14 +574,14 @@ def tile_downloader(nearmap, input_geojson, fid, skip_duplicate_fid, output_dir,
         if max_threads:
             num_threads = max_threads / num_cores
         else:
-            num_threads = 5
+            num_threads = 2
         print({'status': f'Downloading Tiles using {num_cores} Cores & {num_threads} Threads Per Core'})
     else:
         num_cores = num_features
         if max_threads:
             num_threads = max_threads / num_cores
         else:
-            num_threads = ceil((system_cores * 5) / num_cores)
+            num_threads = ceil((system_cores * 2) / num_cores)
         print({'status': f'Processing tiles using {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core'})
     time.sleep(0.1)
 

@@ -471,14 +471,14 @@ def tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_dista
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
-                num_threads = 5
+                num_threads = 2
             files.set_postfix({'status': f'Downloading Tiles using {num_cores} Cores & {num_threads} Threads Per Core'})
         else:
             num_cores = len(zip_d)
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
-                num_threads = ceil((system_cores * 5) / num_cores)
+                num_threads = ceil((system_cores * 2) / num_cores)
             files.set_postfix({'status': f'Processing tiles using {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core'})
 
         with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
