@@ -340,7 +340,7 @@ def _process_tiles(nearmap, project_folder, tiles_folder, quadkey, zip_d, out_im
                                       include=include, exclude=exclude, rate_limit_mode=rate_limit_mode,
                                       return_url=True)
 
-    with concurrent.futures.ThreadPoolExecutor(num_threads) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         for t in zip_d.get(quadkey):
             z = t.z
             x = t.x
@@ -463,6 +463,7 @@ def tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_dista
                 print(f"User Input {max_cores} 'max_cores' < {system_cores} available system cpu cores... continuing process")
         else:
             max_cores = system_cores
+        threads_per_core = 5
         num_cores = None
         num_threads = None
         #print(f'Threads: {max_threads} | zip_d: {len(zip_d)}')
@@ -471,17 +472,17 @@ def tile_downloader(nearmap, input, output_dir, out_manifest, zoom, buffer_dista
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
-                num_threads = 2
+                num_threads = threads_per_core
             files.set_postfix({'status': f'Downloading Tiles using {num_cores} Cores & {num_threads} Threads Per Core'})
         else:
             num_cores = len(zip_d)
             if max_threads:
                 num_threads = max_threads / num_cores
             else:
-                num_threads = ceil((system_cores * 2) / num_cores)
+                num_threads = ceil((system_cores * threads_per_core) / num_cores)
             files.set_postfix({'status': f'Processing tiles using {num_cores} Cores | Downloading Tiles using {num_threads} Threads Per Core'})
 
-        with concurrent.futures.ProcessPoolExecutor(num_cores) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
             with tqdm(total=len(zip_d)) as progress:
                     jobs = []
                     for quadkey in zip_d:
