@@ -65,7 +65,16 @@ def _get_image(url, out_format, out_image, rate_limit_mode="slow", quiet=False):
                     data = get(url, allow_redirects=True)
                     return data
                     # return get(url, allow_redirects=True)
-                except(ConnectionError, ConnectionResetError, ConnectionAbortedError, OSError) as e:
+                except(ConnectionError, ConnectionResetError, ConnectionAbortedError) as e:
+                    backoff_time = iter * 0.03
+                    if backoff_time >= 1800:
+                        sleep(backoff_time)
+                        iter = 1
+                    sleep(backoff_time)
+                    iter += 1
+                except OSError as e:
+                    if iter < 10000:
+                        iter += 10000  # start pausing for 5 min + interval if max retries exceeded
                     backoff_time = iter * 0.03
                     if backoff_time >= 1800:
                         sleep(backoff_time)
@@ -183,7 +192,7 @@ def download_ortho(api_key, polygon, out_folder, out_format="tif", tertiary=None
 
 
 def download_dsm(base_url, api_key, polygon, out_folder, since=None, until=None, fields=None):
-    from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
+    from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid
     from nearmap._download import dsm_imagery_downloader
 
     coords = get_coords(in_file=polygon)
@@ -196,8 +205,8 @@ def download_dsm(base_url, api_key, polygon, out_folder, since=None, until=None,
 
 def download_ai(base_url, api_key, polygon, out_folder, since=None, until=None, packs=None, out_format="json",
                 lat_lon_direction="yx", surveyResourceID=None):
-    from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid, generate_static_images
-    from nearmap._download import generate_ai_pack, process_payload, process_payload_parse
+    from nearmap._download_lib import get_coords, create_grid, grid_to_slippy_grid
+    from nearmap._download import generate_ai_pack
 
     coords = get_coords(in_file=polygon)
     grid = create_grid(coords)
@@ -400,11 +409,11 @@ def aiFeaturesV4(base_url, api_key, polygon, since=None, until=None, packs=None,
             elif out_format == "geojson" and output is None:
                 return gdf.dropna(axis=1).to_json()
             elif out_format == "parquet":
-                import warnings;
+                import warnings
                 warnings.filterwarnings('ignore', message='.*initial implementation of Parquet.*')
                 return gdf.dropna(axis=1).to_parquet(output)
             elif out_format == "feather":
-                import warnings;
+                import warnings
                 warnings.filterwarnings('ignore', message='.*initial implementation of Parquet.*')
                 return gdf.dropna(axis=1).to_feather(output)
             elif out_format in supported_geo_file_formats or out_format in supported_db_formats:
