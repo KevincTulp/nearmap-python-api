@@ -5,7 +5,7 @@ from os import remove
 import pytest
 
 # Connect to the Nearmap API for Python
-nearmap = NEARMAP(get_api_key)
+nearmap = NEARMAP(get_api_key())
 
 ##########################
 # get tileSurvey Inputs
