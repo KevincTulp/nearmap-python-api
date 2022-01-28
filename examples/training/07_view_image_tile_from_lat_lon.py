@@ -10,7 +10,7 @@ nearmap = NEARMAP(api_key)
 # get tile Inputs
 #################
 
-zoom = 17
+zoom = 19
 lat_deg = 40.76248769686459
 lon_deg = -111.89575293016202
 format = "jpg"
