@@ -3,7 +3,7 @@ from nearmap.geospatial.fileio import lat_lon_to_slippy_coords
 from PIL import Image, ImageDraw
 import os
 
-api_key = os.environ.get("NEAMRP_API_KEY")
+api_key = os.environ.get("NEARMAP_API_KEY")
 nearmap = NEARMAP(api_key)
 
 ####################
