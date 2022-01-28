@@ -49,10 +49,11 @@ west_imBytes = Image.open(west_image_tile_bytes)
 # Merge the Tiles into a single image
 img_list = [["Vert", vert_imBytes], ["North", north_imBytes], ["South", south_imBytes], ["East", east_imBytes],
             ["West", west_imBytes]]
-len = sum([_[1].size[0] for _ in img_list]) + (image_pixel_offset*len(img_list))
+len = sum([_[1].size[0] for _ in img_list]) + (image_pixel_offset*(len(img_list)+1))
 height = max([_[1].size[1] for _ in img_list]) + (image_pixel_offset*2)
 merged_image = Image.new('RGB', (len, height), (250, 250, 250))
 total_x_offset = 0
+
 for i, val in enumerate(img_list):
     image = val[1]
     if i == 0:

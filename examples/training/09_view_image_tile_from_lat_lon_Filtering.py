@@ -60,7 +60,8 @@ west_imBytesFiltered = west_imBytes.filter(filter_of_interest)
 # Merge the Tiles into a single image
 img_list = [["Vert", vert_imBytesFiltered], ["North", north_imBytesFiltered], ["South", south_imBytesFiltered],
             ["East", east_imBytesFiltered], ["West", west_imBytesFiltered]]
-len = sum([_[1].size[0] for _ in img_list]) + (image_pixel_offset*len(img_list))
+
+len = sum([_[1].size[0] for _ in img_list]) + (image_pixel_offset*(len(img_list)+1))
 height = max([_[1].size[1] for _ in img_list]) + (image_pixel_offset*2)
 merged_image = Image.new('RGB', (len, height), (250, 250, 250))
 total_x_offset = 0
