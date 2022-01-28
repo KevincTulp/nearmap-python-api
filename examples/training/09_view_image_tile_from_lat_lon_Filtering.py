@@ -21,7 +21,7 @@ lon_deg = -111.89575293016202
 format = "jpg"
 out_image = f"test_image.{format}"
 image_pixel_offset = 25
-filter_of_interest = EMBOSS  # Options: [BLUR, CONTOUR, DETAIL, EDGE_ENHANCE, EDGE_ENHANCE_MORE, EMBOSS, FIND_EDGES, SMOOTH, SMOOTH_MORE, SHARPEN]
+filter_of_interest = CONTOUR # Options: [BLUR, CONTOUR, DETAIL, EDGE_ENHANCE, EDGE_ENHANCE_MORE, EMBOSS, FIND_EDGES, SMOOTH, SMOOTH_MORE, SHARPEN]
 
 # Convert lat, lon and zoom to x,y,z
 x, y = lat_lon_to_slippy_coords(lat_deg, lon_deg, zoom)
