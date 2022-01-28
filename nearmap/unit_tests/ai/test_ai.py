@@ -8,7 +8,9 @@ nearmap = NEARMAP(get_api_key())
 # get tile Inputs
 #################
 
-polygon = [-87.73101994900836,41.79082699478777,-87.73056822386012,41.79083207215124,-87.73055971145155,41.79050035022655,-87.73101767903275,41.79047834820146,-87.73101767903275,41.79047834820146,-87.73101994900836,41.79082699478777]
+polygon = [-87.73101994900836, 41.79082699478777, -87.73056822386012, 41.79083207215124, -87.73055971145155,
+           41.79050035022655, -87.73101767903275, 41.79047834820146, -87.73101767903275, 41.79047834820146,
+           -87.73101994900836, 41.79082699478777]
 since = None
 until = None
 packs = None
@@ -29,3 +31,5 @@ def test_aiPacks():
     assert len(nearmap.aiPacksV4("json")["packs"]) > 0, "Error: empty json object returned"
     assert nearmap.aiPacksV4("pandas").empty is False, "Error: empty pandas dataframe object returned"
     assert nearmap.aiPacksV4("text") is not None, "Error: empty text object returned"
+
+# TODO: Implement test for all other output formats
