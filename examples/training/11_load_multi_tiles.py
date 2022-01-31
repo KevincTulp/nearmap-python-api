@@ -20,7 +20,6 @@ axis_padding = 0.0
 enable_axis = False
 out_file = r'test.jpg'
 
-
 # Convert lat, lon and zoom to x,y,z
 x, y = lat_lon_to_slippy_coords(lat_deg, lon_deg, zoom)
 

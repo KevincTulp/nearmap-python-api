@@ -21,6 +21,7 @@ import sys
 from os import cpu_count
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
+from PIL import Image
 
 try:
     from osgeo_utils import gdal_merge
@@ -292,13 +293,47 @@ def zip_dir(source, destination):
 
 
 def _download_tiles(in_params, fid, out_manifest):
+
     url = in_params.get('url')
     path = Path(in_params.get('path')).resolve().as_posix()
     unique_id = in_params.get('id')
     fid_value = in_params.get(fid)
     ext = Path(path).suffix.replace(".", "")
+
+    rotations = {"Vert": 0, "North": 0, "South": 180, "East": 270, "West": 90}
+
+    def format_output_path(in_image, in_path):
+        format = in_image.get_format_mimetype()
+        if "jpeg" in format:
+            out_path = Path(in_path.replace(".img", ".jpg")).resolve().as_posix()
+        else:
+            out_path = Path(in_path.replace(".img", ".png")).resolve().as_posix()
+
+        return out_path
     try:
-        image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow")
+        if "North" in url or "Vert" in url:
+            image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow", quiet=True)
+        elif "South" in url:
+            image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                                quiet=True))
+            image_rotated = image_bytes.rotate(rotations.get("South"))
+            image = format_output_path(image_bytes, path)
+            image_rotated.save(image)
+            del image_bytes, image_rotated
+        elif "East" in url:
+            image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                                quiet=True))
+            image_rotated = image_bytes.rotate(rotations.get("East"))
+            image = format_output_path(image_bytes, path)
+            image_rotated.save(image)
+            del image_bytes, image_rotated
+        elif "West" in url:
+            image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                                quiet=True))
+            image_rotated = image_bytes.rotate(rotations.get("West"))
+            image = format_output_path(image_bytes, path)
+            image_rotated.save(image)
+            del image_bytes, image_rotated
     except Exception as e:
         print(f"Error: Error downloading image for: {unique_id} | {fid_value} | {path} | {_exception_info()}")
         image = None
@@ -640,7 +675,7 @@ if __name__ == "__main__":
     fid = "property_id"
     #fid = 'HCAD_NUM'  # Unique Feature ID for downloading/processing
     skip_duplicate_fid = True
-    output_dir = r'C:/pools_unclipped'
+    output_dir = r'C:/ok'
     zoom = 21  # Nearmap imagery zoom level
     download_method = 'bounds'  # 'bounds', 'bounds_per_feature', or 'geometry'
     buffer_distance = 0  # Buffer Distance in Meters

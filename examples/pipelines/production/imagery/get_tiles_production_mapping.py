@@ -3,6 +3,7 @@ from nearmap._api import _get_image
 from nearmap import NEARMAP
 from pathlib import Path
 from math import log, tan, radians, cos, atan, sinh, pi, degrees, floor, ceil
+from PIL import Image
 import fiona
 from fiona.transform import transform_geom
 from shapely.geometry import Polygon, box, shape, mapping
@@ -289,11 +290,46 @@ def zip_dir(source, destination):
 
 def _download_tiles(in_params, out_manifest):
     url = in_params.get('url')
-    path = in_params.get('path')
+    path = Path(in_params.get('path')).resolve().as_posix()
     fid = in_params.get('id')
     ext = Path(path).suffix.replace(".", "")
     # print(url, ext, path)
-    image = _get_image(url=url, out_format=ext, out_image=path.as_posix(), rate_limit_mode="slow", quiet=True)
+
+    rotations = {"Vert": 0, "North": 0, "South": 180, "East": 270, "West": 90}
+
+    def format_output_path(in_image, in_path):
+        format = in_image.get_format_mimetype()
+        if "jpeg" in format:
+            out_path = Path(in_path.replace(".img", ".jpg")).resolve().as_posix()
+        else:
+            out_path = Path(in_path.replace(".img", ".png")).resolve().as_posix()
+
+        return out_path
+
+    if "North" in url or "Vert" in url:
+        image = _get_image(url=url, out_format=ext, out_image=path, rate_limit_mode="slow", quiet=True)
+    elif "South" in url:
+        image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                            quiet=True))
+        image_rotated = image_bytes.rotate(rotations.get("South"))
+        image = format_output_path(image_bytes, path)
+        image_rotated.save(image)
+        del image_bytes, image_rotated
+    elif "East" in url:
+        image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                            quiet=True))
+        image_rotated = image_bytes.rotate(rotations.get("East"))
+        image = format_output_path(image_bytes, path)
+        image_rotated.save(image)
+        del image_bytes, image_rotated
+    elif "West" in url:
+        image_bytes = Image.open(_get_image(url=url, out_format=ext, out_image="bytes", rate_limit_mode="slow",
+                                            quiet=True))
+        image_rotated = image_bytes.rotate(rotations.get("West"))
+        image = format_output_path(image_bytes, path)
+        image_rotated.save(image)
+        del image_bytes, image_rotated
+
     if image:
         if not out_manifest:
             m = dict()
@@ -549,7 +585,7 @@ if __name__ == "__main__":
     input = r'../test_data'  # Input Directory or File (geojson).
                              # Use underscores in filename to designate output directory structure
                              # ex: my_file_name.geojson converts to: output_dir/my/file/name'
-    output_dir = r'C:\output_tiles'
+    output_dir = r'C:\output_tiles5'
     zoom = 21
     buffer_distance = 0  # Options: 0.5, 1, 5, 10, etc... Distance in meters to offset by
     remove_holes = True
@@ -565,7 +601,7 @@ if __name__ == "__main__":
     #############################
 
     surveyid = None  # Optional for calling a specific survey...
-    tileResourceType = 'Vert'  # Currently only 'Vert' and 'North' are supported
+    tileResourceType = 'Vert'  # "Vert", "North", "South" "East", "West"
     tertiary = None
     since = None
     until = None
