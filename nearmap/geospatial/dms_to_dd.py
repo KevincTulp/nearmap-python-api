@@ -21,7 +21,7 @@ def convert_coord_list_dms_to_dd(in_dms_coords, delimeter="-"):
 if __name__ == "__main__":
 
     #################################
-    # Convert DMS coord to DD Coord
+    # Convert DMS coord list to DD Coord list
     ###############################
     in_dms_coords = [
         ["34-28-40.9000N", "093-05-46.4000W"],
@@ -43,4 +43,3 @@ if __name__ == "__main__":
     delimeter = "-"
     result = convert_coords_dms_to_dd(in_dms_coord, delimeter)
     print(f"processed coord pair as: {result}")
-
