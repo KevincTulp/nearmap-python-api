@@ -1,32 +1,28 @@
 
 
 def dms_to_dd(d, m, s):
-    dd = d + float(m)/60 + float(s)/3600
-    return dd
+    return d + float(m)/60 + float(s)/3600
 
 
-def gen_coord(d, m, s):
-    return d + dms_to_dd(d, m, s)
-
-
-def process_coords(dms_coord):
-    d, m, sd = dms_coord.split('-')
+def process_coord(dms_coord, delimeter="-"):
+    d, m, sd = dms_coord.split(delimeter)
     s, dir = (sd[:-1], sd[-1])
-    return gen_coord(int(d), int(m), float(s)) * (-1 if dir in ['W', 'S'] else 1)
+    return dms_to_dd(int(d), int(m), float(s)) * (-1 if dir in ['W', 'S'] else 1)
 
 
 def convert_coords_dms_to_dd(in_dms_coords, delimeter="-"):
-    results = []
-    for i in in_dms_coords:
-        _lat, _lon = i
-        lat = process_coords(_lat)
-        lon = process_coords(_lon)
-        results.append([lat, lon])
-    return results
+    return [process_coord(in_dms_coords[0], delimeter), process_coord(in_dms_coords[1], delimeter)]
+
+
+def convert_coord_list_dms_to_dd(in_dms_coords, delimeter="-"):
+    return [convert_coords_dms_to_dd(i, delimeter) for i in in_dms_coords]
 
 
 if __name__ == "__main__":
 
+    #################################
+    # Convert DMS coord to DD Coord
+    ###############################
     in_dms_coords = [
         ["34-28-40.9000N", "093-05-46.4000W"],
         ["34-43-45.9862N", "092-13-29.1968W"],
@@ -37,5 +33,14 @@ if __name__ == "__main__":
         ["35-09-16.6120N", "114-33-33.5960W"]]
 
     delimeter = "-"
-    results = convert_coords_dms_to_dd(in_dms_coords, delimeter)
-    print(results)
+    results = convert_coord_list_dms_to_dd(in_dms_coords, delimeter)
+    print(f"processed coordinates as: {results}")
+
+    #################################
+    # Convert DMS coord to DD Coord
+    ###############################
+    in_dms_coord = ["34-28-40.9000N", "093-05-46.4000W"]
+    delimeter = "-"
+    result = convert_coords_dms_to_dd(in_dms_coord, delimeter)
+    print(f"processed coord pair as: {result}")
+
