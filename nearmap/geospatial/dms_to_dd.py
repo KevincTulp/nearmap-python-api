@@ -15,7 +15,7 @@ def process_coords(dms_coord):
     return gen_coord(int(d), int(m), float(s)) * (-1 if dir in ['W', 'S'] else 1)
 
 
-def convert_coords_dms_to_dd(in_dms_coords):
+def convert_coords_dms_to_dd(in_dms_coords, delimeter="-"):
     results = []
     for i in in_dms_coords:
         _lat, _lon = i
@@ -36,6 +36,6 @@ if __name__ == "__main__":
         ["14-19-53.9840S", "170-42-41.4110W"],
         ["35-09-16.6120N", "114-33-33.5960W"]]
 
-    results = convert_coords_dms_to_dd(in_dms_coords)
-
+    delimeter = "-"
+    results = convert_coords_dms_to_dd(in_dms_coords, delimeter)
     print(results)
