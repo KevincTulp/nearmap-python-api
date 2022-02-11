@@ -59,7 +59,7 @@ GOTO %1
 	    :: Activate the environment
         CALL activate "%ENV_NAME%"
 	    :: Removing Nearmap from the Environment. Deleting the EGG
-	    CALL pip uninstall nearmap -y
+	    CALL pip uninstall "%PROJECT_NAME%" -y
 	    :: Deactivating the Environment
 		CALL conda deactivate
 		:: Removing the Environment
@@ -73,7 +73,7 @@ GOTO %1
 	    :: Activate the environment
         CALL activate "%ENV_NAME%"
 	    :: Removing Nearmap
-	    CALL pip uninstall nearmap -y
+	    CALL pip uninstall "%PROJECT_NAME%" -y
 	    :: Deactivating the Environment
 		CALL conda deactivate
 		:: Removing the Environment
@@ -105,7 +105,7 @@ GOTO %1
         :: Activate the environment
         CALL activate "%ENV_NAME%"
         :: Removing Nearmap from the Environment. Deleting the EGG
-        CALL pip uninstall nearmap -y
+        CALL pip uninstall "%PROJECT_NAME%" -y
     )
     EXIT /B
 
@@ -115,7 +115,7 @@ GOTO %1
         :: Activate the environment
         CALL activate "%ENV_NAME%"
         :: Removing Nearmap from the Environment. Deleting the EGG
-        CALL pip uninstall nearmap -y
+        CALL pip uninstall "%PROJECT_NAME%" -y
         :: Installing Nearmap to the Environment. Generating the EGG
         CALL pip install -e ./../
     )
