@@ -31,44 +31,44 @@ env:
 	conda env create -f environment.yml
 	@echo ">>> Successfully Installed New Environment, $(ENV_NAME)"
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 ##	jupyter labextension install @jupyter-widgets/jupyterlab-manager -
 	@echo ">>> New conda environment, $(ENV_NAME), created. Activate with: - source activate $(ENV_NAME) - make env_activate"
 
 ## Remove the Environment
 env_remove:
-	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y )
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall $(PROJECT_NAME) -y )
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 	conda env remove --name $(ENV_NAME) -y
 	@echo ">>> Successfully Removed Existing Environment, $(ENV_NAME)"
 
 ## Update the Environment
 env_update:
-	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall $(PROJECT_NAME) -y)
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 	conda env remove --name $(ENV_NAME) -y
 	@echo ">>> Successfully Removed Existing Environment, $(ENV_NAME)"
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && conda env create -f environment.yml)
 	@echo ">>> Successfully Installed New Environment, $(ENV_NAME)"
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 
-## Create Nearmap EGG
+## Create EGG
 pip_install:
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 
-## Remove Nearmap EGG
+## Remove EGG
 pip_remove:
-	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	@echo ">>> Successfully Removed Nearmap from Environment, $(ENV_NAME)"
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall $(PROJECT_NAME) -y)
+	@echo ">>> Successfully Removed $(PROJECT_NAME) from Environment, $(ENV_NAME)"
 
-## Update Nearmap EGG
+## Update EGG
 pip_update:
-	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall nearmap -y)
-	@echo ">>> Successfully Removed Nearmap from Environment, $(ENV_NAME)"
+	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip uninstall $(PROJECT_NAME) -y)
+	@echo ">>> Successfully Removed $(PROJECT_NAME) from Environment, $(ENV_NAME)"
 	($(CONDA_BASE) $(ENV_NAME) ; cd $(PROJECT_DIR) && python -m pip install -e ..)
-	@echo ">>> Successfully Installed Nearmap in Environment, $(ENV_NAME)"
+	@echo ">>> Successfully Installed $(PROJECT_NAME) in Environment, $(ENV_NAME)"
 
 ## Export the current environment
 env_export:
