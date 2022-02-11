@@ -1,4 +1,4 @@
-.PHONY: data clean env_create env_export env_activate env_build test create_kernel
+.PHONY: data clean env env_remove env_update env_export pip_install pip_remove pip_update test create_kernel
 
 #################################################################################
 # GLOBALS                                                                       #
