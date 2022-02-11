@@ -41,8 +41,8 @@ out_image = f"test_image.{format}"
 ```
 Additional values can alse be input such as:
 - tertiary="satellite"
-- since=2015-10-31 
-- until=2020-10-31
+- since="2015-10-31"
+- until="2020-10-31"
 - mosaic="latest"
 - include="disaster:hurricane"
 
