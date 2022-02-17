@@ -10,9 +10,6 @@
 compatibility across operating systems and cpu architectures.</i>
 
 ** [If You Prefer... Click here or Video Walkthroughs (No Audio)](https://miro.com/app/board/uXjVOQB1X4I=/?invite_link_id=455996902306) **
-<p align="center">
-<iframe src="https://miro.com/app/board/uXjVOQB1X4I=/?invite_link_id=455996902306" title="Videos" width="100%" height="400" frameborder="0" scrolling="no"></iframe>
-</p>
 
 1.) Ensure you have ***ONE*** of the following Python Package Managers Installed:
 - Conda (Data Science Toolkit): https://www.anaconda.com/products/individual
