@@ -9,6 +9,8 @@
 "Conda-Forge" and "PIP Install" deployments in the future. The following installation methodology ensures 
 compatibility across operating systems and cpu architectures.</i>
 
+** [If You Prefer... Click here or Video Walkthroughs (No Audio)](https://miro.com/app/board/uXjVOQB1X4I=/?invite_link_id=455996902306) **
+
 1.) Ensure you have ***ONE*** of the following Python Package Managers Installed:
 - Conda (Data Science Toolkit): https://www.anaconda.com/products/individual
 - Miniconda (Minimal Installer for Conda): https://docs.conda.io/en/latest/miniconda.html

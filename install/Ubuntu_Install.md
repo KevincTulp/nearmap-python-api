@@ -10,6 +10,8 @@
 "Conda-Forge" and "PIP Install" deployments in the future. The following installation methodology ensures 
 compatibility across operating systems and cpu architectures.</i>
 
+** [If You Prefer... Click here or Video Walkthroughs (No Audio)](https://miro.com/app/board/uXjVOQB1X4I=/?invite_link_id=455996902306) **
+
 1.) Update Ubuntu
 - ```sudo apt update && sudo apt upgrade```
 
