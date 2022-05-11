@@ -24,6 +24,7 @@ compatibility across operating systems and cpu architectures.</i>
     - For MiniForge3 (Conda):
       - ```wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh && bash Miniforge-$(uname)-$(uname -m).sh```
       - ```export PATH=~/Miniforge3/bin:$PATH```
+      - - ```source mambaforge/bin/activate```
 - Conda:
   - Conda [Installation Instructions](https://docs.anaconda.com/anaconda/install/linux/)
 
